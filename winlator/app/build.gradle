@@ -1,0 +1,176 @@
+// Modified by D2Android (changes 2026-10-09 to 2026-11-03).
+apply plugin: 'com.android.application'
+
+android {
+    namespace 'com.winlator'
+    compileSdk 35
+
+    defaultConfig {
+
+        applicationId 'at.d2android'
+        minSdkVersion 26
+        targetSdkVersion 28
+
+        versionCode((project.findProperty('d2VersionCode') ?: '33') as Integer)
+        versionName(project.findProperty('d2VersionName') ?: "12.0")
+    }
+
+
+
+    def d2Keystore = rootProject.file(project.findProperty('d2Keystore') ?: '../signing/debug.keystore')
+
+
+    def d2ReleaseKeystore = project.findProperty('d2ReleaseKeystore')
+
+    def d2AptabaseKey = (project.findProperty('d2AptabaseKey') ?: System.getenv('D2_APTABASE_KEY') ?: '').toString().trim()
+    if (!(d2AptabaseKey ==~ /A-(EU|US)-[0-9]{6,20}/)) d2AptabaseKey = ''
+    signingConfigs {
+        if (d2ReleaseKeystore) {
+            pub {
+                storeFile file(d2ReleaseKeystore)
+                storeType 'PKCS12'
+                storePassword project.findProperty('d2ReleaseKeystorePassword')
+                keyAlias 'd2android'
+                keyPassword project.findProperty('d2ReleaseKeystorePassword')
+            }
+        }
+        d2 {
+            storeFile d2Keystore
+
+            storePassword project.findProperty('d2StorePassword') ?: 'android'
+            keyAlias project.findProperty('d2KeyAlias') ?: 'androiddebugkey'
+            keyPassword project.findProperty('d2KeyPassword') ?: 'android'
+        }
+    }
+
+
+
+    buildFeatures {
+        buildConfig true
+    }
+
+    buildTypes {
+        debug {
+
+            if (d2Keystore.exists()) {
+                signingConfig signingConfigs.d2
+            }
+            minifyEnabled true
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            buildConfigField 'boolean', 'D2_INTERNAL', 'true'
+
+            buildConfigField 'String', 'D2_APTABASE_KEY', '""'
+
+            resValue 'string', 'app_name', 'D2Android Dev'
+            resValue 'string', 'd2launch_label', 'D2Android Dev'
+
+            ndk {
+                abiFilters 'arm64-v8a'
+            }
+        }
+
+
+
+        release {
+            if (d2ReleaseKeystore) {
+                signingConfig signingConfigs.pub
+            }
+            else if (d2Keystore.exists()) {
+                signingConfig signingConfigs.d2
+            }
+            resValue 'string', 'app_name', 'D2Android'
+            resValue 'string', 'd2launch_label', 'D2Android'
+            debuggable false
+            minifyEnabled true
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            buildConfigField 'boolean', 'D2_INTERNAL', 'false'
+
+
+            buildConfigField 'String', 'D2_APTABASE_KEY', "\"${d2AptabaseKey}\""
+
+            ndk {
+                abiFilters 'arm64-v8a'
+            }
+        }
+    }
+
+
+    sourceSets {
+        main.assets.srcDirs += "$buildDir/generated/d2news"
+
+        release.res.srcDirs += "$buildDir/generated/d2shortcuts/res"
+    }
+
+    lintOptions {
+        checkReleaseBuilds false
+
+
+
+
+        error 'MissingTranslation', 'ExtraTranslation', 'NewApi'
+
+
+
+        checkOnly 'MissingTranslation', 'ExtraTranslation', 'NewApi'
+    }
+
+    ndkVersion '24.0.8215888'
+
+    externalNativeBuild {
+        cmake {
+            version '3.22.1'
+            path 'src/main/cpp/CMakeLists.txt'
+        }
+    }
+}
+
+
+androidComponents {
+    onVariants(selector().withBuildType('release')) { variant ->
+        variant.applicationId.set(project.property('d2PublicPackage'))
+    }
+}
+
+dependencies {
+    implementation 'androidx.appcompat:appcompat:1.4.0'
+    implementation 'androidx.preference:preference:1.2.1'
+    implementation 'com.google.android.material:material:1.4.0'
+    implementation 'com.github.luben:zstd-jni:1.5.2-3@aar'
+    implementation 'org.tukaani:xz:1.9'
+    implementation 'org.apache.commons:commons-compress:1.25.0'
+    implementation 'androidx.lifecycle:lifecycle-process:2.5.1'
+}
+
+
+def d2NewsCopy = tasks.register('d2NewsAsset', Copy) {
+    from rootProject.file('../public/CHANGELOG.md')
+    into "$buildDir/generated/d2news/news"
+}
+preBuild.dependsOn d2NewsCopy
+
+tasks.matching { it.name == 'preReleaseBuild' }.configureEach {
+    doFirst {
+
+        if (!rootProject.file('../public/CHANGELOG.md').exists() && !file('src/main/assets/news/CHANGELOG.md').exists())
+            throw new GradleException('public/CHANGELOG.md is missing')
+    }
+}
+
+
+def d2PublicPackage = project.property('d2PublicPackage')
+def d2ShortcutsRelease = tasks.register('d2ShortcutsRelease', Copy) {
+    from 'src/main/res/xml/d2_shortcuts.xml'
+    into "$buildDir/generated/d2shortcuts/res/xml"
+    inputs.property('package', d2PublicPackage)
+    filter { String line -> line.replace('android:targetPackage="at.d2android"', "android:targetPackage=\"$d2PublicPackage\"") }
+}
+
+tasks.matching { it.name == 'preReleaseBuild' }.configureEach {
+    dependsOn d2ShortcutsRelease
+    doFirst {
+
+        def info = [file('src/release/assets/d2/runtime-info.txt'), file('src/main/assets/d2/runtime-info.txt')].find { it.exists() }
+        if (info == null || !info.text.contains("package=$d2PublicPackage"))
+            throw new GradleException("the public runtime for $d2PublicPackage is missing: run tools/build-runtime.sh --public")
+    }
+}

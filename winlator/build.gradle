@@ -1,0 +1,21 @@
+// Modified by D2Android (changes 2026-10-09 to 2026-11-03).
+
+buildscript {
+    repositories {
+        mavenCentral()
+        google()
+    }
+    dependencies {
+        classpath 'com.android.tools.build:gradle:8.4.2'
+
+
+
+    }
+}
+
+allprojects {
+    repositories {
+        mavenCentral()
+        google()
+    }
+}
