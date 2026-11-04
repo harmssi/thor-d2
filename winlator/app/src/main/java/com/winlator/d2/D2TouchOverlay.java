@@ -3447,7 +3447,8 @@ public class D2TouchOverlay extends View {
 
             touch.role = ROLE_INFO;
         }
-        else if (controlsVisible && inJoystickZone(x, y)) {
+        // Thor D2: with the deck shown the stick walks; the invisible touch joystick would swallow taps into the world.
+        else if (controlsVisible && !deckShown && inJoystickZone(x, y)) {
             touch.role = ROLE_JOYSTICK;
             if (joystickOwner == D2Gamepad.OWNER_PAD) joystickReleased();
             joystickOwner = D2Gamepad.OWNER_FINGER;

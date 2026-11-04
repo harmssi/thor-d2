@@ -350,7 +350,7 @@ public final class D2Deck extends View {
                 c.drawRect(a.left + 6, a.top + 6, a.right - 6, a.bottom - 6, fill);
             }
             body(c, names[i], a.centerX(), a.centerY() + 8, 20, i == tab ? GOLD : DIM, Paint.Align.CENTER);
-            hits.add(new Hit(a, () -> { tab = which; selectedId = -1; }));
+            hits.add(new Hit(a, () -> tab = which));  // a taken item stays taken, so it can go to another tab
         }
     }
 
@@ -382,9 +382,7 @@ public final class D2Deck extends View {
             body(c, slots[loc], area.left + 268, y, 18, DIM, Paint.Align.LEFT);
             body(c, it != null ? ellipsize(it.oneLine(), area.right - area.left - 400, 18) : "–", area.left + 368, y, 18,
                 it != null ? qualityColor(it) : DIM, Paint.Align.LEFT);
-            // shortcut: putting items on or taking them off the body is not tested on the device yet, so the slots
-            // only show the equipment; enable onCell(PAGE_BODY, …) once 0x1A/0x1C are checked with a real item.
-            hits.add(new Hit(a, () -> { if (it != null) note(it.oneLine()); }));
+            hits.add(new Hit(a, () -> { if (it != null && selectedId < 0) hold(it); else onCell(D2DeckData.PAGE_BODY, slotLoc, 0); }));
             y += rowH;
         }
         drawSelected(c, items, area);
@@ -790,7 +788,7 @@ public final class D2Deck extends View {
         if (IDENTIFY_TESTED && !it.identified() && it.quality >= D2ModItems.QUALITY_MAGIC && scroll != null)
             b.add(new Object[]{t("Identify", "Identifiz."), (Runnable) () -> link.deckItem(D2ModLink.DI_IDENTIFY, it.id, 0, 0, 0, scroll.id)});
         if (inv && s != null && s.isOpen(D2ModState.UI_NPCSHOP))
-            b.add(new Object[]{t("Sell", "Verkaufen"), (Runnable) () -> link.sell(it.x, it.y)});
+            b.add(new Object[]{t("Sell", "Verkaufen"), (Runnable) () -> link.deckItem(D2ModLink.DI_SELL, it.id, 0, 0, 0, 0)});
         b.add(new Object[]{t("Drop", "Wegwerfen"), (Runnable) () -> link.deckItem(D2ModLink.DI_MOVE, it.id, D2ModLink.DI_TO_GROUND, 0, 0, 0)});
         b.add(new Object[]{t("Cancel", "Abbrechen"), (Runnable) () -> {}});
         float w = (568 - (b.size() - 1) * 8) / (float) b.size(), x = 636;

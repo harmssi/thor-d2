@@ -1,7 +1,8 @@
 # Thor D2 – Änderungen
 
 ## 0.1.3 (04.11.2026)
-- Gegenstände per Touch im Deck: antippen = aufnehmen, Feld antippen = ablegen (Inventar, Truhe und Würfel wenn im Spiel offen, Gürtelplätze). Knöpfe: Benutzen, In Gürtel, Verkaufen (Händler offen), Wegwerfen, Abbrechen. Über die Aufnehmen-/Ablegen-Befehle des Spiels, nur Einzelspieler.
+- Gegenstände per Touch im Deck: antippen = aufnehmen, Feld antippen = ablegen (Inventar, Ausrüstung, Truhe und Würfel wenn im Spiel offen, Gürtelplätze). Knöpfe: Benutzen, In Gürtel, Verkaufen (Händler offen), Wegwerfen, Abbrechen. Über die Aufnehmen-/Ablegen-Befehle des Spiels, nur Einzelspieler.
+- Taste A spricht auch NPCs an und öffnet die Truhe (Angriff oder Nehmen, wie in D2Android). Antippen der Spielwelt erreicht das Spiel auch mit Deck.
 
 ## 0.1.2 (04.11.2026)
 - CD-Key-Felder: jedes Zeichen sofort maskiert, kein Vollbild-Tastaturfeld im Querformat, keine Vorschläge, kein Autofill. Die Key-Seite ist in Screenshots und Aufnahmen wieder schwarz (die Firmware des AYN Thor hatte den üblichen Schutz verworfen; er wird jetzt anders gesetzt).

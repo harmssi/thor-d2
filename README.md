@@ -37,8 +37,9 @@ If it works for you, a ⭐ on GitHub helps.
 - **Area and act**, town or not.
 - **Items by touch:** tap an item to take it (it shows gold), tap a cell to put it there: inventory, stash and cube
   (open them in the game), belt slots. While an item is taken the buttons offer use, to belt, sell (a shop open),
-  drop and cancel. The mod sends the game's own pick-up and put-down commands; an item left on the cursor goes back.
-  Equipping from the deck and identifying are not enabled yet.
+  drop and cancel. Equipment slots work too (tap an equipped item, then an inventory cell, or the other way round).
+  The mod sends the game's own pick-up and put-down commands; an item the game refuses goes back where it was.
+  Identifying is not enabled yet.
 - **Skills on keys:** in the *Skills* tab tap a learnt skill, then where it goes: left/right mouse button or F1–F8
   (on the pad X, Y, R3, RB+R3, RB+X, RB+Y, RB+A, RB+B). The current keys show with icon and name. The deck uses the
   game's own skill and hotkey commands (single player); the controller stays with the game.
@@ -72,7 +73,7 @@ right face button and confirms):
 | Button | Action | With **RB** held |
 |---|---|---|
 | Left stick | walk | |
-| A | attack / main skill (left skill) | F7 |
+| A | attack / main skill; talks to NPCs, opens the stash and chests | F7 |
 | B | pick up ("Take"; hold: ring of targets) | F8 |
 | X | skill F1 | F5 |
 | Y | skill F2 | F6 |

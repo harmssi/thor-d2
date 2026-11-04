@@ -72,7 +72,8 @@ public final class D2Gamepad {
 
     public static int defaultAction(int button, boolean layer2) {
         switch (button) {
-            case A: return layer2 ? D2TriggerAction.SKILL_F1 + 6 : D2TriggerAction.ATTACK;
+            // attack, or talk / open / take what the pad aims at (as upstream), so NPCs and the stash work with A
+            case A: return layer2 ? D2TriggerAction.SKILL_F1 + 6 : D2TriggerAction.ATTACK_OR_TAKE;
             case B: return layer2 ? D2TriggerAction.SKILL_F8 : D2TriggerAction.TAKE;
             case X: return layer2 ? D2TriggerAction.SKILL_F1 + 4 : D2TriggerAction.SKILL_F1;
             case Y: return layer2 ? D2TriggerAction.SKILL_F1 + 5 : D2TriggerAction.SKILL_F1 + 1;

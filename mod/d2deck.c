@@ -139,6 +139,7 @@ static void sendDeck(void* player) {
 #define DI_USE          2
 #define DI_IDENTIFY     3
 #define DI_BELT_AUTO    4
+#define DI_SELL         5
 #define DI_TO_INV       0
 #define DI_TO_CUBE      3
 #define DI_TO_STASH     4
@@ -313,6 +314,13 @@ static void deckItemCommand(void* player, const BYTE* buf, int n) {
     else if (!why && op == DI_BELT_AUTO) {
         if (kind != 0 || !diBeltable(item)) why = "does not go into the belt";
     }
+    else if (!why && op == DI_SELL) {
+        if (!sellAvailable) why = "selling is not available";
+        else if (sell.pending) why = "a sale still waits for the server";
+        else if (!shopNpc()) why = "no shop open";
+        else if (kind != 0) why = "only from the inventory";
+        else if (itemCategory(item, itemCode(item), &tier) == CAT_QUEST) why = "a quest item";
+    }
     else if (!why) why = "no such operation";
     if (why) {
         logLine("deck item %lu op %d to %d %d,%d: refused, %s", (unsigned long) id, op, to, tx, ty, why);
@@ -330,6 +338,29 @@ static void deckItemCommand(void* player, const BYTE* buf, int n) {
         diSend(13, p);
         playUseSound(item);
         logLine("deck item %lu: used (0x%02X)", (unsigned long) id, p[0]);
+        return;
+    }
+    if (op == DI_SELL) {
+        // As the game's own sale (0x33), as d2sell.c sends it, without needing the pointer on the item.
+        void* npc = shopNpc();
+        int price = fGetItemPrice(player, item, RD8((void*) client, RVA_ShopDifficulty), *(void**) (client + RVA_ShopQuestFlags),
+            RD32(npc, U_TXTNO), 1);
+        BYTE p[17] = {0x33};
+        *(DWORD*) (p + 1) = RD32(npc, U_ID);
+        *(DWORD*) (p + 5) = id;
+        *(DWORD*) (p + 9) = RD32(item, U_MODE);
+        *(DWORD*) (p + 13) = (DWORD) price;
+        diSend(17, p);
+        sell.pending = 1;
+        sell.request = 0;
+        sell.item = id;
+        sell.npc = RD32(npc, U_ID);
+        sell.price = price;
+        sell.goldBefore = sellGold(player);
+        sell.sentAt = GetTickCount();
+        memcpy(sell.code, itemCode(item), 3);
+        sell.code[3] = 0;
+        logLine("deck item %lu: sold to npc %lu for %d", (unsigned long) id, (unsigned long) sell.npc, price);
         return;
     }
     if (op == DI_IDENTIFY) {
