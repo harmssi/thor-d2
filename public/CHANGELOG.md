@@ -1,5 +1,8 @@
 # Thor D2 – changes
 
+## 0.1.3 (2026-11-04)
+- Items by touch in the deck: tap an item to take it, tap a cell to put it there (inventory, stash and cube when open in the game, belt slots). Buttons: use, to belt, sell (shop open), drop, cancel. Uses the game's own pick-up and put-down commands, single player only.
+
 ## 0.1.2 (2026-11-04)
 - CD key fields: every character masked at once, no full-screen keyboard text field in landscape, no suggestions or autofill. The key page is black in screenshots and recordings again (the AYN Thor's firmware dropped the usual protection flag; it is now set another way).
 

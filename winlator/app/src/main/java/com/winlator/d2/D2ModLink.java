@@ -1040,6 +1040,16 @@ public final class D2ModLink {
 
 
 
+    // Thor D2: move or use an item from the deck (mod/d2deck.c, command 38).
+    public static final int CMD_DECK_ITEM = 38, DI_MOVE = 1, DI_USE = 2, DI_IDENTIFY = 3, DI_BELT_AUTO = 4;
+    public static final int DI_TO_INV = 0, DI_TO_CUBE = 3, DI_TO_STASH = 4, DI_TO_BELT = 10, DI_TO_BODY = 11, DI_TO_GROUND = 12;
+
+    public void deckItem(int op, long id, int to, int x, int y, long other) {
+        D2Trace.log("-> deck item op " + op + " id " + id + " to " + to + " " + x + "," + y);
+        send(command(CMD_DECK_ITEM, 12).put((byte) op).putInt((int) id).put((byte) to).put((byte) x).put((byte) y)
+            .putInt((int) other));
+    }
+
     public void move(int place, int x, int y) {
         int request = ++moveRequest;
         D2Trace.log("-> move place " + place + " cell " + x + "," + y + " request " + request);

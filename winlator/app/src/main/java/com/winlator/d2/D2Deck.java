@@ -124,6 +124,8 @@ public final class D2Deck extends View {
         D2ModState s = link != null ? link.state() : null;
         D2DeckData.Stats st = link != null ? link.deck.stats(3000) : null;
         D2Hud hud = host.hud();
+        drawLink = link;
+        drawState = s;
         if (s == null || st == null) {
             drawWaiting(c, link, hud);
             c.restore();
@@ -365,19 +367,25 @@ public final class D2Deck extends View {
         String[] slots = german
             ? new String[]{"", "Kopf", "Amulett", "Rüstung", "Rechts", "Links", "Ring r.", "Ring l.", "Gürtel", "Stiefel", "Handsch.", "Waffe 2 r.", "Waffe 2 l."}
             : new String[]{"", "Head", "Amulet", "Armor", "Right", "Left", "Ring r.", "Ring l.", "Belt", "Boots", "Gloves", "Swap r.", "Swap l."};
-        float y = bottom + 74;
-        for (D2DeckData.Item it : items) {
-            if (it.page != D2DeckData.PAGE_BODY || y > area.bottom - 50) continue;
-            String slot = it.x < slots.length ? slots[it.x] : "?";
-            RectF a = new RectF(area.left + 268, y - 22, area.right - 16, y + 6);
-            if (it.id == selectedId) {
+        float y = bottom + 70;
+        float rowH = Math.min(28, (area.bottom - 56 - y) / 10);
+        for (int loc = 1; loc <= 10; loc++) {
+            D2DeckData.Item on = null;
+            for (D2DeckData.Item it : items) if (it.page == D2DeckData.PAGE_BODY && it.x == loc) on = it;
+            final D2DeckData.Item it = on;
+            final int slotLoc = loc;
+            RectF a = new RectF(area.left + 268, y - rowH + 6, area.right - 16, y + 6);
+            if (it != null && it.id == selectedId) {
                 fill.setColor(0x40C7B377);
                 c.drawRect(a, fill);
             }
-            body(c, slot, area.left + 268, y, 19, DIM, Paint.Align.LEFT);
-            body(c, ellipsize(it.oneLine(), area.right - area.left - 400, 19), area.left + 368, y, 19, qualityColor(it), Paint.Align.LEFT);
-            hits.add(new Hit(a, () -> selectedId = it.id));
-            y += 28;
+            body(c, slots[loc], area.left + 268, y, 18, DIM, Paint.Align.LEFT);
+            body(c, it != null ? ellipsize(it.oneLine(), area.right - area.left - 400, 18) : "–", area.left + 368, y, 18,
+                it != null ? qualityColor(it) : DIM, Paint.Align.LEFT);
+            // shortcut: putting items on or taking them off the body is not tested on the device yet, so the slots
+            // only show the equipment; enable onCell(PAGE_BODY, …) once 0x1A/0x1C are checked with a real item.
+            hits.add(new Hit(a, () -> { if (it != null) note(it.oneLine()); }));
+            y += rowH;
         }
         drawSelected(c, items, area);
     }
@@ -386,7 +394,7 @@ public final class D2Deck extends View {
         panel(c, hud, area.left, area.top, area.right, area.bottom);
         boolean any = false;
         for (D2DeckData.Item it : items) any |= it.page == page;
-        if (!any) {
+        if (!any && selectedId < 0) {
             body(c, empty, area.left + 28, area.top + 56, 24, DIM, Paint.Align.LEFT);
             return;
         }
@@ -557,6 +565,13 @@ public final class D2Deck extends View {
         panel(c, hud, 616, 912, 1224, 1064);
         boolean single = st.singlePlayer && link.singlePlayer();
         D2Points pts = link.points(3000);
+        D2DeckData.Item heldItem = single ? held() : null;
+        if (heldItem != null) {
+            drawItemActions(c, hud, link, drawState, heldItem);
+            body(c, ellipsize(note != null && SystemClock.uptimeMillis() < noteUntil ? note
+                : t("Taken – tap where it goes", "Aufgenommen – Ziel antippen"), 568, 20), 636, 1040, 20, GOLD, Paint.Align.LEFT);
+            return;
+        }
         boolean sorting = pts != null && pts.sortState == D2Points.SORT_RUNNING && SystemClock.uptimeMillis() - sortSentAt < 25000;
         button(c, hud, new RectF(636, 930, 904, 1002), sorting ? t("Sorting …", "Sortiere …") : t("Sort inventory", "Inventar sortieren"),
             single && !sorting, () -> {
@@ -570,7 +585,7 @@ public final class D2Deck extends View {
         if (!single) status = t("Multiplayer / Battle.net: deck actions are off", "Mehrspieler/Battle.net: Deck-Aktionen gesperrt");
         else if (note != null && SystemClock.uptimeMillis() < noteUntil) status = note;
         else if (pts != null && pts.sortCounter > 0) status = sortText(pts.sortState, pts.sortMoves);
-        else status = t("Tap an item for its full name", "Gegenstand antippen zeigt den vollen Namen");
+        else status = t("Tap an item to take it, then tap where it goes", "Gegenstand antippen = aufnehmen, Ziel antippen = ablegen");
         body(c, ellipsize(status, 568, 20), 636, 1040, 20, DIM, Paint.Align.LEFT);
     }
 
@@ -615,6 +630,8 @@ public final class D2Deck extends View {
             r.set(x0 + x * cell + 1, y0 + y * cell + 1, x0 + (x + 1) * cell - 1, y0 + (y + 1) * cell - 1);
             c.drawRect(r, fill);
             c.drawRect(r, stroke);
+            final int cx = x, cy = y;
+            hits.add(new Hit(new RectF(r), () -> onCell(page, cx, cy)));
         }
         for (D2DeckData.Item it : items) {
             if (it.page != page) continue;
@@ -632,6 +649,8 @@ public final class D2Deck extends View {
             r.set(x0 + x * cell + 1, y0 + y * cell + 1, x0 + (x + 1) * cell - 1, y0 + (y + 1) * cell - 1);
             c.drawRect(r, fill);
             c.drawRect(r, stroke);
+            final int slot = (rows - 1 - y) * 4 + x;
+            hits.add(new Hit(new RectF(r), () -> onCell(D2DeckData.PAGE_BELT, slot, 0)));
         }
         for (D2DeckData.Item it : items) {
             if (it.page != D2DeckData.PAGE_BELT) continue;
@@ -668,7 +687,125 @@ public final class D2Deck extends View {
             wrap(c, it.w == 1 && it.h == 1 ? longestWord(it.oneLine()) : it.oneLine(), a, Math.max(12, Math.min(17, cell * 0.3f)), color);
         }
         if (it.quantity > 1 && it.w * it.h <= 2) body(c, String.valueOf(it.quantity), a.right - 3, a.bottom - 3, 16, TEXT, Paint.Align.RIGHT);
-        hits.add(new Hit(a, () -> selectedId = it.id));
+        hits.add(new Hit(a, () -> {
+            if (selectedId == it.id) selectedId = -1;
+            else hold(it);
+        }));
+    }
+
+    // ---- items by touch: tap = take, tap a cell = put it there; the action bar offers the right-click jobs ---------
+
+    private D2ModLink drawLink;
+    private D2ModState drawState;
+
+    private void hold(D2DeckData.Item it) {
+        selectedId = it.id;
+        note(t("Taken: ", "Aufgenommen: ") + it.oneLine() + t(" – tap where it goes", " – Ziel antippen"));
+    }
+
+    private D2DeckData.Item held() {
+        D2ModLink link = drawLink;
+        if (link == null || selectedId < 0) return null;
+        for (D2DeckData.Item it : link.deck.items(D2DeckData.OWNER_HERO)) if (it.id == selectedId) return it;
+        return null;
+    }
+
+    private void onCell(int page, int x, int y) {
+        D2DeckData.Item it = held();
+        D2ModLink link = drawLink;
+        if (it == null || link == null) return;
+        if (it.page == page && it.x == x && it.y == y) {
+            selectedId = -1;
+            return;
+        }
+        D2ModState s = drawState;
+        if (s != null && s.paused()) {
+            note(t("Game paused: continue on the upper screen first", "Spiel pausiert: erst oben fortsetzen"));
+            return;
+        }
+        int to = page == D2DeckData.PAGE_STASH ? D2ModLink.DI_TO_STASH : page == D2DeckData.PAGE_CUBE ? D2ModLink.DI_TO_CUBE
+            : page == D2DeckData.PAGE_BELT ? D2ModLink.DI_TO_BELT : page == D2DeckData.PAGE_BODY ? D2ModLink.DI_TO_BODY : D2ModLink.DI_TO_INV;
+        if ((to == D2ModLink.DI_TO_STASH || it.page == D2DeckData.PAGE_STASH) && s != null && !s.isOpen(D2ModState.UI_STASH)) {
+            note(t("Open the stash in the game first", "Erst im Spiel die Truhe öffnen"));
+            return;
+        }
+        if ((to == D2ModLink.DI_TO_CUBE || it.page == D2DeckData.PAGE_CUBE) && s != null && !s.isOpen(D2ModState.UI_CUBE)) {
+            note(t("Open the cube in the game first", "Erst im Spiel den Würfel öffnen"));
+            return;
+        }
+        if (to == D2ModLink.DI_TO_INV || to == D2ModLink.DI_TO_STASH || to == D2ModLink.DI_TO_CUBE) {
+            for (D2DeckData.Item o : link.deck.items(D2DeckData.OWNER_HERO)) {
+                if (o.id == it.id || o.page != page) continue;
+                if (o.x < x + it.w && x < o.x + o.w && o.y < y + it.h && y < o.y + o.h) {
+                    note(t("No room there", "Dort ist kein Platz"));
+                    return;
+                }
+            }
+        }
+        link.deckItem(D2ModLink.DI_MOVE, it.id, to, x, y, 0);
+        note(t("Moving: ", "Lege um: ") + it.oneLine());
+        selectedId = -1;
+    }
+
+    private static boolean beltable(D2DeckData.Item it) {
+        String c = it.code.trim();
+        return c.startsWith("hp") || c.startsWith("mp") || c.equals("rvs") || c.equals("rvl") || c.equals("yps")
+            || c.equals("vps") || c.equals("wms") || c.equals("tsc") || c.equals("isc");
+    }
+
+    private static boolean usable(D2DeckData.Item it) {
+        String c = it.code.trim();
+        return (beltable(it) && !c.equals("isc")) || c.equals("tbk");
+    }
+
+    private static final boolean IDENTIFY_TESTED = false;
+
+    private D2DeckData.Item identifier() {
+        D2ModLink link = drawLink;
+        if (link == null) return null;
+        for (D2DeckData.Item i : link.deck.items(D2DeckData.OWNER_HERO)) {
+            String c = i.code.trim();
+            if ((c.equals("isc") || (c.equals("ibk") && i.quantity > 0)) && (i.page == D2DeckData.PAGE_INV || i.page == D2DeckData.PAGE_BELT)) return i;
+        }
+        return null;
+    }
+
+    private void drawItemActions(Canvas c, D2Hud hud, D2ModLink link, D2ModState s, D2DeckData.Item it) {
+        java.util.List<Object[]> b = new java.util.ArrayList<>();
+        boolean inv = it.page == D2DeckData.PAGE_INV;
+        if (usable(it) && (inv || it.page == D2DeckData.PAGE_BELT))
+            b.add(new Object[]{t("Use", "Benutzen"), (Runnable) () -> link.deckItem(D2ModLink.DI_USE, it.id, 0, 0, 0, 0)});
+        if (inv && beltable(it))
+            b.add(new Object[]{t("To belt", "In Gürtel"), (Runnable) () -> {
+                // first free belt slot (0x63 only takes potions), as a normal move
+                boolean[] used = new boolean[16];
+                for (D2DeckData.Item o : link.deck.items(D2DeckData.OWNER_HERO)) if (o.page == D2DeckData.PAGE_BELT && o.x < 16) used[o.x] = true;
+                int slot = -1;
+                for (int i = 0; i < 4 && slot < 0; i++) if (!used[i]) slot = i;
+                if (slot < 0) note(t("The belt row is full", "Die Gürtelreihe ist voll"));
+                else link.deckItem(D2ModLink.DI_MOVE, it.id, D2ModLink.DI_TO_BELT, slot, 0, 0);
+            }});
+        D2DeckData.Item scroll = identifier();
+        // shortcut: identifying (0x27) is not tested on the device yet, so it is off until checked.
+        if (IDENTIFY_TESTED && !it.identified() && it.quality >= D2ModItems.QUALITY_MAGIC && scroll != null)
+            b.add(new Object[]{t("Identify", "Identifiz."), (Runnable) () -> link.deckItem(D2ModLink.DI_IDENTIFY, it.id, 0, 0, 0, scroll.id)});
+        if (inv && s != null && s.isOpen(D2ModState.UI_NPCSHOP))
+            b.add(new Object[]{t("Sell", "Verkaufen"), (Runnable) () -> link.sell(it.x, it.y)});
+        b.add(new Object[]{t("Drop", "Wegwerfen"), (Runnable) () -> link.deckItem(D2ModLink.DI_MOVE, it.id, D2ModLink.DI_TO_GROUND, 0, 0, 0)});
+        b.add(new Object[]{t("Cancel", "Abbrechen"), (Runnable) () -> {}});
+        float w = (568 - (b.size() - 1) * 8) / (float) b.size(), x = 636;
+        for (Object[] o : b) {
+            Runnable r0 = (Runnable) o[1];
+            button(c, hud, new RectF(x, 930, x + w, 1002), (String) o[0], true, () -> {
+                if (s != null && s.paused()) {
+                    note(t("Game paused: continue on the upper screen first", "Spiel pausiert: erst oben fortsetzen"));
+                    return;
+                }
+                r0.run();
+                selectedId = -1;
+            });
+            x += w + 8;
+        }
     }
 
     private void drawSelected(Canvas c, List<D2DeckData.Item> items, RectF area) {

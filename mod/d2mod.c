@@ -3301,6 +3301,7 @@ static void handleCommands(void* player, int stale) {
         if ((cmd == CMD_SHOP_POTIONS || cmd == CMD_REPAIR || cmd == CMD_SELL_LOOT || cmd == CMD_STASH_LOOT) && player) shopCommand(player, buf, n);
         if (cmd == CMD_SELL && player) sellCommand(player, buf, n);
         if (cmd == CMD_MOVE && player) moveCommand(player, buf, n);
+        if (cmd == CMD_DECK_ITEM && player) deckItemCommand(player, buf, n);
         if (cmd == CMD_CUBE && player) cubeCommand(player, buf, n);
         if (cmd == CMD_CUBE_OPEN && player) cubeOpenCommand(player);
         if (cmd == CMD_LABELS && n >= 9) labelFilterCommand(buf, n);
@@ -4733,6 +4734,7 @@ static void gameTick(void) {
     STEP(equipTick(player, now));
     STEP(sortTick(player, now));
     STEP(moveTick(player, now));
+    STEP(deckItemTick(player, now));
     STEP(cubeTick(player, now));
     if (player && !pauseApplied) {
         STEP(repressLost(now));
