@@ -427,9 +427,25 @@ public final class D2Deck extends View {
     // Word of the first quest of each act in the quest flags (same layout as the quest block of a .d2s file).
     private static final int[] QUEST_FIRST_WORD = {1, 9, 17, 25, 35};
 
+    // Quest titles from the game's own string tables (its language), key qstsa<act>q<n>; English names as fallback.
+    private String questName(D2Hud hud, int act, int q) {
+        String n = hud != null ? hud.gameText("qstsa" + (act + 1) + "q" + (q + 1)) : null;
+        return n != null && !n.isEmpty() ? n.replace('\n', ' ') : QUESTS_EN[act][q];
+    }
+
+    private static boolean questKeysLogged;
+
+    private void logQuestKeys(D2Hud hud) {
+        if (questKeysLogged || hud == null) return;
+        questKeysLogged = true;
+        for (int a = 0; a < 5; a++) for (int q = 0; q < QUESTS_EN[a].length; q++)
+            android.util.Log.i("ThorD2", "deck: qstsa" + (a + 1) + "q" + (q + 1) + " = " + hud.gameText("qstsa" + (a + 1) + "q" + (q + 1)) + " / " + QUESTS_EN[a][q]);
+    }
+
     private void drawQuests(Canvas c, D2Hud hud, D2ModLink link, D2ModState s, RectF area) {
         panel(c, hud, area.left, area.top, area.right, area.bottom);
         int[] words = link.questWorte();
+        logQuestKeys(hud);
         int act = Math.max(1, actOf(s.levelNo));
         float y = area.top + 52;
         String hint = null;
@@ -445,10 +461,10 @@ public final class D2Deck extends View {
                 String state = v < 0 ? "?" : finished ? t("done", "erledigt") : (v & 2) != 0 ? t("reward", "Belohnung") : (v & 4) != 0 ? t("started", "begonnen") : "·";
                 if (current) {
                     y += 34;
-                    body(c, QUESTS_EN[a][q], area.left + 52, y, 22, finished ? DIM : TEXT, Paint.Align.LEFT);
+                    body(c, ellipsize(questName(hud, a, q), area.width() - 200, 22), area.left + 52, y, 22, finished ? DIM : TEXT, Paint.Align.LEFT);
                     body(c, state, area.right - 28, y, 22, finished ? MERC : GOLD, Paint.Align.RIGHT);
                 }
-                if (hint == null && v >= 0 && !finished && a + 1 >= act) hint = QUESTS_EN[a][q] + (state.equals("·") ? "" : " (" + state + ")");
+                if (hint == null && v >= 0 && !finished && a + 1 >= act) hint = questName(hud, a, q) + (state.equals("·") ? "" : " (" + state + ")");
             }
             if (!current) body(c, words != null ? done + " / " + QUESTS_EN[a].length : "?", area.right - 28, y, 22, DIM, Paint.Align.RIGHT);
             y += 44;

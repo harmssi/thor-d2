@@ -100,7 +100,8 @@ public class D2InstallActivity extends D2Activity {
             @Override public String stepName(D2InstallSteps.Step step) { return getString(STEP_TEXT[step.ordinal()]); }
             @Override public CharSequence status() {
                 TextView v = progressView != null && progressView.getText().length() > 0 ? progressView : statusView;
-                return v != null ? v.getText() : null;
+                if (v != null && v.getText().length() > 0) return v.getText();
+                return steps.current() == D2InstallSteps.Step.FETCH ? getString(R.string.thord2_install_start) : null;
             }
         }), shown -> {});
         installDeck.start();

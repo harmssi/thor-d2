@@ -1678,4 +1678,6 @@
     <string name="game_in_app">In der App</string>
     <string name="game_in_app_from">In der App (übernommen aus %1$s)</string>
     <string name="settings_saves_save_as">Spielstände speichern</string>
+    <!-- Thor D2 -->
+    <string name="thord2_install_start">Spielsprache wählen, dann Weiter. Die Keys kommen später auf einer eigenen Seite.</string>
 </resources>
