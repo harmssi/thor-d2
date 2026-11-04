@@ -187,6 +187,9 @@ public final class D2ModLink {
     private String mapLogged = "";
 
     public D2MapFetch mapFetch() { return mapFetch; }
+
+    /** Thor D2: deck data (mod/d2deck.c). */
+    public final D2DeckData deck = new D2DeckData();
     private volatile Status status = new Status(-1, "", 0);
     private volatile int received;
 
@@ -330,6 +333,9 @@ public final class D2ModLink {
             if (copy.length >= 10) mapFetch.level((copy[8] & 0xFF) | ((copy[9] & 0xFF) << 8));
             logGoals(copy);
             if (D2SpieltestPort.active()) D2SpieltestPort.goals(copy, copy.length);
+        }
+        else if (type == D2DeckData.PKT_STATS || type == D2DeckData.PKT_ITEMS) {
+            deck.accept(data, length);
         }
         else if (type == D2Quests.PKT_QUESTS) {
 

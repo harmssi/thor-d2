@@ -3242,6 +3242,7 @@ static void stashTest(BYTE op, BYTE value);
 #include "d2playtest.c"
 #include "d2map.c"
 #include "d2quest.c"
+#include "d2deck.c"
 #include "d2teleport.c"
 #include "d2objects.c"
 #include "d2value.c"
@@ -4399,6 +4400,7 @@ static void collectAndSend(void* player) {
     sendPlaytest(player, act, levelNo);
     sendEffects(player);
     sendQuests(player);
+    sendDeck(player);
 }
 
 #include "d2server.c"

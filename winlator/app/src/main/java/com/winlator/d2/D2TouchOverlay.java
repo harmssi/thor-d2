@@ -466,6 +466,18 @@ public class D2TouchOverlay extends View {
     private int[][] padMap = D2Gamepad.parseMap(null);
 
     private boolean padActive;
+    // Thor D2: while the deck shows on the second screen, the upper screen is the plain game picture.
+    private boolean deckShown;
+
+    void setDeckShown(boolean shown) {
+        deckShown = shown;
+        D2Trace.log(shown ? "deck shown: touch controls hidden" : "deck gone: touch controls back");
+        invalidate();
+    }
+
+    D2Hud deckHud() {
+        return hud;
+    }
 
     private boolean padStickActive, padStickHasDirection;
     private float padDirX = 1, padDirY;
@@ -1568,7 +1580,7 @@ public class D2TouchOverlay extends View {
             }
         }
         if (mod != null && !editMode && controlsVisible) drawModMarkers(canvas);
-        if (mod != null && controlsVisible && padHidesControls()) drawPadBar(canvas);
+        if (mod != null && controlsVisible && padHidesControls() && !deckShown) drawPadBar(canvas);
         if (padWheelOpen) drawPadWheel(canvas);
         if (SystemClock.uptimeMillis() < aimPreviewUntil) {
             drawAimPreview(canvas);
@@ -8012,6 +8024,7 @@ public class D2TouchOverlay extends View {
 
 
     private boolean padHidesControls() {
+        if (deckShown && !editMode) return true;
         return D2Gamepad.hidesControls(padActive, editMode, idle.phase() != D2Idle.Phase.OFF, D2SpieltestPort.playing(), false);
     }
 
@@ -8662,7 +8675,7 @@ public class D2TouchOverlay extends View {
     private final Button padBarAttack = new Button("padBarAttack", "", KIND_ATTACK, 0, GROUP_GAME, false);
     private final Button[] padBarSkills = new Button[8];
 
-    private static final int[] PAD_BAR = {D2Gamepad.Y, D2Gamepad.X, D2Gamepad.B, D2Gamepad.A, D2Gamepad.RB, D2Gamepad.RT};
+    private static final int[] PAD_BAR = {D2Gamepad.Y, D2Gamepad.X, D2Gamepad.B, D2Gamepad.A, D2Gamepad.R3, D2Gamepad.RT};
     private static final float[][] PAD_BAR_AT = {{0, -1}, {-1, 0}, {1, 0}, {0, 1}, {1.9f, -1.6f}, {1.9f, -0.5f}};
 
 
@@ -9035,6 +9048,15 @@ public class D2TouchOverlay extends View {
         if (npcMenuOpen() && (row == 2 || row == 3)) {
             cycleInteract(row == 3 ? -1 : 1);
             return;
+        }
+        // Thor D2: D-pad up = map, down = town portal, left/right = belt columns 3/4 (LT/RT drink).
+        // With RB held the D-pad gives belt 1-4 to the mercenary, as upstream.
+        if (!mercenary) {
+            if (row >= 2) {
+                padFixed(row == 3 ? D2TriggerAction.MAP : D2TriggerAction.PORTAL);
+                return;
+            }
+            row += 2;
         }
         D2Trace.log("pad: belt " + (row + 1) + (mercenary ? " to the mercenary" : ""));
         boolean shifted = shiftDown;

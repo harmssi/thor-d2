@@ -194,7 +194,7 @@ public final class D2Effects {
 
 
 
-    private String describe(Effect e) {
+    String describe(Effect e) {
         Info info = info(e.state);
         String what;
         if (info != null) what = name(info) + ": " + text(info.effect);

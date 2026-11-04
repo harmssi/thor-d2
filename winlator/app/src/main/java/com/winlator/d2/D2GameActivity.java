@@ -59,6 +59,8 @@ public class D2GameActivity extends D2Activity {
     private XServer xServer;
     private WinHandler winHandler;
     private D2TouchOverlay overlay;
+    // Thor D2: deck on the second screen.
+    private D2DeckScreen deckScreen;
     private TextView loadingView;
     private BufferedWriter guestLog;
     private final com.winlator.core.Callback<String> guestLogCallback = this::writeGuestLog;
@@ -212,6 +214,11 @@ public class D2GameActivity extends D2Activity {
 
         overlay.setModExpected(GameShadow.LOADER_EXE.equals(getIntent().getStringExtra(EXTRA_PROGRAM)));
         screen.addOverlay(overlay);
+        deckScreen = new D2DeckScreen(this, new D2Deck.Host() {
+            @Override public D2ModLink link() { return overlay != null ? overlay.modLink() : null; }
+            @Override public D2Hud hud() { return overlay != null ? overlay.deckHud() : null; }
+        }, shown -> { if (overlay != null) overlay.setDeckShown(shown); });
+        deckScreen.start();
 
 
         root.setOnApplyWindowInsetsListener((v, insets) -> {
@@ -1131,6 +1138,7 @@ public class D2GameActivity extends D2Activity {
     @Override
     public void onResume() {
         super.onResume();
+        if (deckScreen != null) deckScreen.resume();
         if (directLoading != null) D2Music.gameInFront(this, true);
         if (afterRelaunch) return;
 
@@ -1277,6 +1285,7 @@ public class D2GameActivity extends D2Activity {
 
     @Override
     public void onPause() {
+        if (deckScreen != null) deckScreen.pause();
         if (directLoading != null) D2Music.gameInFront(this, false);
         if (afterRelaunch) {
             super.onPause();
@@ -1341,6 +1350,7 @@ public class D2GameActivity extends D2Activity {
 
     @Override
     protected void onDestroy() {
+        if (deckScreen != null) deckScreen.stop();
         if (screenOnRegistered) {
             screenOnRegistered = false;
             try {

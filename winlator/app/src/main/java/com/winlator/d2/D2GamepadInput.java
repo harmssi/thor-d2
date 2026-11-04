@@ -127,7 +127,7 @@ final class D2GamepadInput {
                 continue;
             }
 
-            boolean holds = !swallowed[b] && b != D2Gamepad.LT && D2Gamepad.beltRow(b) < 0 && !D2Gamepad.hasLongPress(b);
+            boolean holds = !swallowed[b] && b != D2Gamepad.LAYER && D2Gamepad.beltRow(b) < 0 && !D2Gamepad.hasLongPress(b);
             swallowed[b] = false;
             if (holds) overlay.padButton(b, overlay.padAction(b, pressedInLayer2[b]), false);
         }
@@ -184,20 +184,20 @@ final class D2GamepadInput {
             heldOpensBox(button, pressed);
             return;
         }
-        if (button == D2Gamepad.LT) {
+        if (button == D2Gamepad.LAYER) {
             overlay.padLayer(pressed);
             return;
         }
         int row = D2Gamepad.beltRow(button);
         if (row >= 0) {
-            if (pressed) overlay.padBelt(row, down[D2Gamepad.LT]);
+            if (pressed) overlay.padBelt(row, down[D2Gamepad.LAYER]);
             return;
         }
         if (D2Gamepad.hasLongPress(button)) {
             longOrShort(button, pressed);
             return;
         }
-        if (pressed) pressedInLayer2[button] = down[D2Gamepad.LT];
+        if (pressed) pressedInLayer2[button] = down[D2Gamepad.LAYER];
         if (pressed ? D2Gamepad.sortsWhenHeld(button, overlay.padInventoryOpen()) : deferred[button]) {
             heldSorts(button, pressed);
             return;
@@ -213,7 +213,7 @@ final class D2GamepadInput {
         if (pressed) {
             deferredBox[button] = true;
             longDone[button] = false;
-            pressedInLayer2[button] = down[D2Gamepad.LT];
+            pressedInLayer2[button] = down[D2Gamepad.LAYER];
             Runnable r = () -> {
                 if (!down[button] || !deferredBox[button]) return;
                 longDone[button] = true;
@@ -261,7 +261,7 @@ final class D2GamepadInput {
         boolean view = button == D2Gamepad.VIEW;
         if (pressed) {
             longDone[button] = false;
-            pressedInLayer2[button] = down[D2Gamepad.LT];
+            pressedInLayer2[button] = down[D2Gamepad.LAYER];
             Runnable r = () -> {
                 if (!down[button]) return;
                 longDone[button] = true;

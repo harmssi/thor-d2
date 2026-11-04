@@ -64,20 +64,23 @@ public final class D2Gamepad {
 
 
 
-    public static final int[] ASSIGNABLE = {A, X, B, Y, RB, RT, LB, L3, R3, VIEW};
+    // Thor D2: fixed AYN Thor layout. RB held is the second row (upstream: LT); LT and RT drink.
+    public static final int LAYER = RB;
+
+    public static final int[] ASSIGNABLE = {A, X, B, Y, LT, RT, LB, L3, R3, VIEW};
 
 
     public static int defaultAction(int button, boolean layer2) {
         switch (button) {
-            case A: return D2TriggerAction.ATTACK_OR_TAKE;
-            case X: return layer2 ? D2TriggerAction.SKILL_F1 + 5 : D2TriggerAction.SKILL_F1;
-            case B: return layer2 ? D2TriggerAction.SKILL_F1 + 6 : D2TriggerAction.SKILL_F1 + 1;
-            case Y: return layer2 ? D2TriggerAction.SKILL_F8 : D2TriggerAction.SKILL_F1 + 2;
-            case RB: return layer2 ? D2TriggerAction.PORTAL : D2TriggerAction.SKILL_F1 + 3;
-            case RT: return layer2 ? D2TriggerAction.TAKE : D2TriggerAction.SKILL_F1 + 4;
-            case LB: return D2TriggerAction.NAMES;
+            case A: return layer2 ? D2TriggerAction.SKILL_F1 + 6 : D2TriggerAction.ATTACK;
+            case B: return layer2 ? D2TriggerAction.SKILL_F8 : D2TriggerAction.TAKE;
+            case X: return layer2 ? D2TriggerAction.SKILL_F1 + 4 : D2TriggerAction.SKILL_F1;
+            case Y: return layer2 ? D2TriggerAction.SKILL_F1 + 5 : D2TriggerAction.SKILL_F1 + 1;
+            case R3: return layer2 ? D2TriggerAction.SKILL_F1 + 3 : D2TriggerAction.SKILL_F1 + 2;
+            case LT: return layer2 ? D2TriggerAction.REJUV : D2TriggerAction.HEAL;
+            case RT: return layer2 ? D2TriggerAction.NAMES : D2TriggerAction.MANA;
+            case LB: return D2TriggerAction.WEAPON_SWAP;
             case L3: return D2TriggerAction.RUN_TOGGLE;
-            case R3: return D2TriggerAction.WEAPON_SWAP;
             case VIEW: return D2TriggerAction.INVENTORY;
             default: return D2TriggerAction.NOTHING;
         }
@@ -85,7 +88,7 @@ public final class D2Gamepad {
 
 
     public static String slot(int button, boolean layer2) {
-        return (layer2 ? "LT+" : "") + NAMES[button];
+        return (layer2 ? "RB+" : "") + NAMES[button];
     }
 
 
@@ -102,7 +105,7 @@ public final class D2Gamepad {
             int eq = part.indexOf('=');
             if (eq <= 0) continue;
             String name = part.substring(0, eq).trim();
-            boolean layer2 = name.startsWith("LT+");
+            boolean layer2 = name.startsWith("RB+");
             if (layer2) name = name.substring(3);
             int button = -1;
             for (int b : ASSIGNABLE) if (NAMES[b].equals(name)) button = b;
