@@ -383,7 +383,7 @@ public final class D2Deck extends View {
                     label(c, state, area.right - 24, y, 22, (v & 1) != 0 && v >= 0 ? MERC : ACCENT, false);
                     text.setTextAlign(Paint.Align.LEFT);
                 }
-                if (hint == null && v >= 0 && (v & 1) == 0 && a + 1 >= act - 0) hint = QUESTS_EN[a][q] + (state.equals("·") ? "" : " (" + state + ")");
+                if (hint == null && v >= 0 && (v & 1) == 0 && a + 1 >= act) hint = QUESTS_EN[a][q] + (state.equals("·") ? "" : " (" + state + ")");
             }
             if (!current) {
                 int done = 0;
