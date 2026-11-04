@@ -93,7 +93,9 @@ public class D2InstallActivity extends D2Activity {
         portrait();
 
         getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-        buildUI();
+        keysPreview = getIntent().getBooleanExtra(EXTRA_KEYS_PREVIEW, false);
+        if (keysPreview) buildKeysPage();
+        else buildUI();
         // Thor D2: steps, progress and hints on the second screen.
         installDeck = new D2DeckScreen(this, D2InstallDeck.page(new D2InstallDeck.Host() {
             @Override public D2InstallSteps steps() { return steps; }
@@ -143,6 +145,7 @@ public class D2InstallActivity extends D2Activity {
     @Override
     protected void onResume() {
         super.onResume();
+        secureWindow();
 
 
         if (screen != null) screen.resume();
@@ -436,9 +439,9 @@ public class D2InstallActivity extends D2Activity {
         page.addView(text(getString(R.string.install_keys_intro), D2Style.TEXT), matchWidth());
         android.widget.EditText classic = keyField(getString(R.string.install_key_classic));
         android.widget.EditText lod = keyField(getString(R.string.install_key_lod));
-        classic.setImeOptions(android.view.inputmethod.EditorInfo.IME_ACTION_NEXT);
+        classic.setImeOptions(android.view.inputmethod.EditorInfo.IME_ACTION_NEXT | KEY_IME_FLAGS);
         classic.setOnEditorActionListener((v, action, event) -> lod.requestFocus());
-        lod.setImeOptions(android.view.inputmethod.EditorInfo.IME_ACTION_DONE);
+        lod.setImeOptions(android.view.inputmethod.EditorInfo.IME_ACTION_DONE | KEY_IME_FLAGS);
         page.addView(heading(getString(R.string.install_key_classic)));
         page.addView(classic, matchWidth());
         page.addView(heading(getString(R.string.install_key_lod)));
@@ -517,26 +520,50 @@ public class D2InstallActivity extends D2Activity {
             useKeys(c, l, null, status, install);
         });
         page.addView(install, matchWidth());
+        if (keysPreview) {
+            // Thor D2: preview for checking the page's protection (adb); it can never start anything.
+            install.setEnabled(false);
+            anyway.setEnabled(false);
+        }
         LinearLayout.LayoutParams ap = matchWidth();
         ap.topMargin = dp(8);
         page.addView(anyway, ap);
         ScrollView scroll = new ScrollView(this);
         scroll.setBackgroundColor(D2Style.BACKGROUND);
         scroll.addView(page, new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        scroll.setTag(KEYS_PAGE);
         setContentView(scroll);
-        // Thor D2: the CD keys never show up in screenshots or screen recordings.
-        getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE);
     }
+
+    // Thor D2: the key page never shows up in screenshots or screen recordings. The flag is set before the page is
+    // put into the window and only taken away when another page replaces it.
+    private static final String KEYS_PAGE = "thord2-keys";
 
     @Override
     public void setContentView(android.view.View view) {
-        getWindow().clearFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE);
+        keysPageShown = view.findViewWithTag(KEYS_PAGE) != null;
+        secureWindow();
         super.setContentView(view);
+    }
+
+    private boolean keysPageShown;
+
+    private void secureWindow() {
+        // Thor D2: the AYN Thor firmware drops FLAG_SECURE from Window.addFlags(); set through the attributes it holds
+        // (checked on the device: screencap refused, scrcpy and screenrecord black).
+        android.view.WindowManager.LayoutParams lp = getWindow().getAttributes();
+        int want = keysPageShown ? lp.flags | android.view.WindowManager.LayoutParams.FLAG_SECURE
+            : lp.flags & ~android.view.WindowManager.LayoutParams.FLAG_SECURE;
+        if (want == lp.flags) return;
+        lp.flags = want;
+        getWindow().setAttributes(lp);
     }
 
 
     private boolean restoring;
     private D2DeckScreen installDeck;
+    static final String EXTRA_KEYS_PREVIEW = "thord2_keys_preview";
+    private boolean keysPreview;
 
 
     private boolean roomForKeys() {
@@ -1392,18 +1419,41 @@ public class D2InstallActivity extends D2Activity {
         });
     }
 
+    private static final class KeyMask extends android.text.method.ReplacementTransformationMethod {
+        private static final char[] FROM, TO;
+        static {
+            // every printable Latin-1 character the keys or typos can have
+            FROM = new char[224];
+            TO = new char[224];
+            for (int i = 0; i < 224; i++) {
+                FROM[i] = (char) (32 + i);
+                TO[i] = '\u2022';
+            }
+        }
+        @Override protected char[] getOriginal() { return FROM; }
+        @Override protected char[] getReplacement() { return TO; }
+    }
+
+    private static final int KEY_IME_FLAGS = android.view.inputmethod.EditorInfo.IME_FLAG_NO_EXTRACT_UI
+        | android.view.inputmethod.EditorInfo.IME_FLAG_NO_FULLSCREEN | android.view.inputmethod.EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING;
+
     private android.widget.EditText keyField(String hint) {
         android.widget.EditText field = new android.widget.EditText(this);
         field.setHint(hint);
         field.setSingleLine(true);
         field.setTextColor(D2Style.TEXT);
         field.setHintTextColor(D2Style.HINT);
-        field.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD
+        // Thor D2: a password field (masked, no suggestions, no learning) and no full-screen extract view of the
+        // landscape keyboard, which would show the key in clear text.
+        field.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD
             | android.text.InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS | android.text.InputType.TYPE_TEXT_FLAG_CAP_CHARACTERS);
+        field.setImeOptions(KEY_IME_FLAGS);
+        field.setPrivateImeOptions("nm");
         field.setImportantForAutofill(android.view.View.IMPORTANT_FOR_AUTOFILL_NO_EXCLUDE_DESCENDANTS);
         field.setSaveEnabled(false);
-        // Thor D2: masked like a password; the keyboard stays the plain one without suggestions.
-        field.setTransformationMethod(android.text.method.PasswordTransformationMethod.getInstance());
+        // Every character shows as a dot, also the last one typed (PasswordTransformationMethod shows it briefly
+        // when "show passwords" is on), so a screen recording never sees a key even where FLAG_SECURE is ignored.
+        field.setTransformationMethod(new KeyMask());
         return field;
     }
 

@@ -1,5 +1,8 @@
 # Thor D2 – changes
 
+## 0.1.2 (2026-11-04)
+- CD key fields: every character masked at once, no full-screen keyboard text field in landscape, no suggestions or autofill. The key page is black in screenshots and recordings again (the AYN Thor's firmware dropped the usual protection flag; it is now set another way).
+
 ## 0.1.1 (2026-11-04)
 - Skills on keys from the deck: tap a learnt skill, then left/right or F1–F8 (X, Y, R3, RB+…). Uses the game's own commands.
 - Fresh installation without losing saved games (adb): the saves are parked, only the game is removed, and they come back afterwards.

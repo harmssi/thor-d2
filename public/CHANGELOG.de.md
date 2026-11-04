@@ -1,5 +1,8 @@
 # Thor D2 – Änderungen
 
+## 0.1.2 (04.11.2026)
+- CD-Key-Felder: jedes Zeichen sofort maskiert, kein Vollbild-Tastaturfeld im Querformat, keine Vorschläge, kein Autofill. Die Key-Seite ist in Screenshots und Aufnahmen wieder schwarz (die Firmware des AYN Thor hatte den üblichen Schutz verworfen; er wird jetzt anders gesetzt).
+
 ## 0.1.1 (04.11.2026)
 - Fertigkeiten im Deck belegen: gelernte Fertigkeit antippen, dann links/rechts oder F1–F8 (X, Y, R3, RB+…). Läuft über die Befehle des Spiels.
 - Neuinstallation ohne Spielstand-Verlust (adb): Spielstände werden beiseitegelegt, nur das Spiel wird entfernt, danach kommen sie zurück.

@@ -111,6 +111,13 @@ public class D2LaunchActivity extends D2Activity {
 
         if (com.winlator.BuildConfig.D2_INTERNAL) pendingDirect = D2DirectStart.Request.parse(getIntent().getStringExtra(D2DirectStart.EXTRA));
 
+        // Thor D2: adb-only preview of the CD key page (fresh adb token), to check that it is protected.
+        if (getIntent().getBooleanExtra(D2InstallActivity.EXTRA_KEYS_PREVIEW, false) && D2SpieltestPort.tokenFresh("keys preview")) {
+            startActivity(new android.content.Intent(this, D2InstallActivity.class).putExtra(D2InstallActivity.EXTRA_KEYS_PREVIEW, true));
+            mirrorOnly = true;
+            finish();
+            return;
+        }
         if (D2SaveMirror.handle(this, getIntent())) {
             mirrorOnly = true;
             return;

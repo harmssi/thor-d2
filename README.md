@@ -55,7 +55,9 @@ While the deck shows, the upper screen is the plain game picture: D2Android's wi
 
 **Installation on the Thor:** all pages run in landscape; during the installation the lower screen shows the steps
 (downloader, Lord of Destruction, Diablo II, CD keys, install, patch 1.13d, check), the progress and hints. The CD key
-fields are masked and the key page cannot be captured by screenshots or screen recordings. The D-pad moves between
+fields are masked (every character shows as a dot at once, no keyboard suggestions, no full-screen keyboard text
+field) and the key page cannot be captured: screenshots, scrcpy and screen recordings show it black (`FLAG_SECURE`,
+set through the window attributes because the AYN Thor's firmware drops it from `Window.addFlags`). The D-pad moves between
 fields and buttons, A confirms, B goes back.
 
 ## Controls on the AYN Thor
