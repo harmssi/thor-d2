@@ -11,7 +11,7 @@ import java.net.URLEncoder;
 
 
 public final class D2BugReport {
-    public static final String NEW_ISSUE = "https://github.com/N1v0k/D2Android-Releases/issues/new";
+    public static final String NEW_ISSUE = "https://github.com/harmssi/thor-d2/issues/new";
 
     public static final String TEMPLATE = "bug.yml";
     public static final String FIELD_PHONE = "phone", FIELD_ANDROID = "android", FIELD_VERSION = "version";

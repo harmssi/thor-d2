@@ -78,8 +78,8 @@ android {
             else if (d2Keystore.exists()) {
                 signingConfig signingConfigs.d2
             }
-            resValue 'string', 'app_name', 'D2Android'
-            resValue 'string', 'd2launch_label', 'D2Android'
+            resValue 'string', 'app_name', 'Thor D2'
+            resValue 'string', 'd2launch_label', 'Thor D2'
             debuggable false
             minifyEnabled true
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'

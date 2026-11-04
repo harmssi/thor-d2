@@ -50,7 +50,26 @@ public final class D2Runtime {
 
 
     public static File rootDir(Context context) {
-        return new File(context.getFilesDir(), "rootfs");
+        File root = new File(context.getFilesDir(), "rootfs");
+        linkShortRoot(context);
+        return root;
+    }
+
+    // Thor D2: the runtime's binaries name the rootfs as /data/data/<package>//rootfs (tools/build-runtime.py),
+    // because "de.harmssi.thord2" is longer than the 12 bytes of "com.winlator".
+    private static volatile boolean shortRootLinked;
+
+    private static void linkShortRoot(Context context) {
+        if (shortRootLinked) return;
+        File link = new File(context.getDataDir(), "rootfs");
+        try {
+            if (!java.nio.file.Files.isSymbolicLink(link.toPath()) && !link.exists())
+                android.system.Os.symlink("files/rootfs", link.getPath());
+            shortRootLinked = true;
+        }
+        catch (Exception e) {
+            android.util.Log.e("D2Runtime", "cannot link " + link, e);
+        }
     }
 
     public static File homeDir(Context context) {

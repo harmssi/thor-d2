@@ -297,7 +297,7 @@ def build_vortek_client(args, root):
 
 
 def main():
-    global PACKAGE_NEW
+    global PACKAGE_NEW, PACKAGE_OLD
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--winlator-assets", required=True, help="assets dir of winlator-app 11.2 (or the same files)")
     ap.add_argument("--wine", required=True, help="wine-9.2-x86_64.txz from tools/fetch-winlator101.sh")
@@ -319,7 +319,15 @@ def main():
     args = ap.parse_args()
     PACKAGE_NEW = args.package.encode()
     if len(PACKAGE_NEW) != len(PACKAGE_OLD):
-        sys.exit("--package must have %d characters like com.winlator: %s" % (len(PACKAGE_OLD), args.package))
+        # Thor D2: a longer package id cannot replace "com.winlator" byte for byte. Every use in the rootfs is the
+        # 36-byte prefix /data/data/com.winlator/files/rootfs, so that becomes /data/data/<package>/[/…]rootfs
+        # (padded with slashes); D2Runtime links <data dir>/rootfs to files/rootfs.
+        PACKAGE_OLD = b"/data/data/com.winlator/files/rootfs"
+        head = b"/data/data/" + PACKAGE_NEW + b"/"
+        pad = len(PACKAGE_OLD) - len(head) - len(b"rootfs")
+        if pad < 0:
+            sys.exit("--package is too long for the rootfs path (at most 18 characters): %s" % args.package)
+        PACKAGE_NEW = head + b"/" * pad + b"rootfs"
 
     a = args.winlator_assets
     inputs = {
@@ -395,7 +403,7 @@ def main():
             path = os.path.join(dirpath, name)
             if not os.path.islink(path):
                 with open(path, "rb") as f:
-                    if PACKAGE_OLD in f.read():
+                    if b"com.winlator" in f.read():
                         sys.exit("still contains com.winlator: " + path)
 
     files, dirs, links, raw, comp = pack(root, args.out, args.level, args.format)

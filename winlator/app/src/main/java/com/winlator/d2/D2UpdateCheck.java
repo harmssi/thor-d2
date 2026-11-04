@@ -13,8 +13,8 @@ import java.util.List;
 
 public final class D2UpdateCheck {
 
-    public static final String LATEST_URL = "https://api.github.com/repos/N1v0k/D2Android-Releases/releases/latest";
-    public static final String RELEASES_PAGE = "https://github.com/N1v0k/D2Android-Releases/releases";
+    public static final String LATEST_URL = "https://api.github.com/repos/harmssi/thor-d2/releases/latest";
+    public static final String RELEASES_PAGE = "https://github.com/harmssi/thor-d2/releases";
     public static final long DAY_MS = 24L * 60 * 60 * 1000;
 
     private D2UpdateCheck() {}
