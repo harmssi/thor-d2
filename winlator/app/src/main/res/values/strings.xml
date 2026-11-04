@@ -1684,5 +1684,6 @@
     <string name="game_in_app_from">In the app (taken from %1$s)</string>
     <string name="settings_saves_save_as">Save to a file</string>
     <!-- Thor D2 -->
+    <string name="thord2_news_thanks">Based on D2Android 1.5.2 – thanks to its authors: https://github.com/N1v0k/D2Android-Releases</string>
     <string name="thord2_install_start">Choose the game language, then tap Next. The keys come later, on their own page.</string>
 </resources>

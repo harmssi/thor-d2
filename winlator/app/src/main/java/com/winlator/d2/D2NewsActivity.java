@@ -31,7 +31,10 @@ public class D2NewsActivity extends D2Activity {
         D2Style.heading(title);
         content.addView(title);
         TextView note = new TextView(this);
-        note.setText(getString(R.string.news_english));
+        // Thor D2: own changelog in the app's language, and thanks to D2Android.
+        note.setText(getString(R.string.thord2_news_thanks));
+        note.setAutoLinkMask(android.text.util.Linkify.WEB_URLS);
+        note.setMovementMethod(android.text.method.LinkMovementMethod.getInstance());
         note.setPadding(0, dp(4), 0, dp(8));
         D2Style.hint(note);
         content.addView(note);
@@ -66,7 +69,8 @@ public class D2NewsActivity extends D2Activity {
     }
 
     private String read() {
-        try (InputStream in = getAssets().open(D2Changelog.ASSET)) {
+        boolean german = getResources().getConfiguration().getLocales().get(0).getLanguage().equals("de");
+        try (InputStream in = getAssets().open(german ? D2Changelog.ASSET_DE : D2Changelog.ASSET)) {
             ByteArrayOutputStream out = new ByteArrayOutputStream();
             byte[] buffer = new byte[8192];
             int n;

@@ -10,6 +10,7 @@ import java.util.List;
 
 public final class D2Changelog {
     public static final String ASSET = "news/CHANGELOG.md";
+    public static final String ASSET_DE = "news/CHANGELOG.de.md";
 
     private D2Changelog() {}
 

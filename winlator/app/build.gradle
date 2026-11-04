@@ -143,7 +143,7 @@ dependencies {
 
 
 def d2NewsCopy = tasks.register('d2NewsAsset', Copy) {
-    from rootProject.file('../public/CHANGELOG.md')
+    from rootProject.file('../public/CHANGELOG.md'), rootProject.file('../public/CHANGELOG.de.md')
     into "$buildDir/generated/d2news/news"
 }
 preBuild.dependsOn d2NewsCopy
