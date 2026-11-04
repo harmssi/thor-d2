@@ -1,4 +1,4 @@
-Thor D2 0.1.0 – source code offer
+Thor D2 – source code offer (all versions so far: 0.1.0, 0.1.1)
 
 Thor D2 is a fork of D2Android 1.5.2 (https://github.com/N1v0k/D2Android-Releases). It contains the same
 third-party free software under the GNU GPL and LGPL, in the same versions; only the package path inside the
@@ -18,7 +18,8 @@ upstream source of the same version: their exact build cannot be proven byte for
 builder did not publish are not included. All other parts come as their complete corresponding source.
 The licence texts are on the page "Licenses" in the app (assets/licenses/).
 
-Source archives (runtime 2-a329647c5f379676, attached to the Thor D2 v0.1.0 release):
+Source archives (runtime 2-a329647c5f379676, the same for every Thor D2 version so far; the links below point to
+the v0.1.0 release and stay valid, and each later release on https://github.com/harmssi/thor-d2/releases lists them too):
 
 - wine 9.2 (LGPL-2.1-or-later)
   Source:   https://github.com/harmssi/thor-d2/releases/download/v0.1.0/wine-9.2.tar.xz (SHA-256 8281c5a082cc47ac3c2c91ceaade5f17396553b39adcb32e741253865b658162)

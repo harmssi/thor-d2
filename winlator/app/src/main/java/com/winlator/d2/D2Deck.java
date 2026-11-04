@@ -38,7 +38,7 @@ public final class D2Deck extends View {
     // Colours of the game: gold headings, white/blue/yellow/gold/green/orange/grey items, resistance colours.
     private static final int GOLD = 0xFFC7B377, TEXT = 0xFFE8E2D2, DIM = 0xFF8F8775, RED = 0xFFD04040,
         PANEL_FILL = 0xE0100C09, EDGE = 0xFF5A4A30, XP = 0xFFB89A3A, MERC = 0xFF3FA040;
-    private static final int TAB_INV = 0, TAB_STASH = 1, TAB_CUBE = 2, TAB_MERC = 3, TAB_QUESTS = 4;
+    private static final int TAB_INV = 0, TAB_SKILLS = 1, TAB_STASH = 2, TAB_CUBE = 3, TAB_MERC = 4, TAB_QUESTS = 5;
 
     private final Host host;
     private final boolean german;
@@ -146,6 +146,7 @@ public final class D2Deck extends View {
                 dim(grids, D2Points.GRIDS_CUBE_W, 3), dim(grids, D2Points.GRIDS_CUBE_H, 4), content,
                 t("Cube is empty", "Würfel ist leer")); break;
             case TAB_MERC: drawMerc(c, hud, link, st, content); break;
+            case TAB_SKILLS: drawSkillKeys(c, hud, link, s, content); break;
             default: drawQuests(c, hud, link, s, content);
         }
         drawActions(c, hud, link, st);
@@ -335,8 +336,8 @@ public final class D2Deck extends View {
     }
 
     private void drawTabs(Canvas c, D2Hud hud) {
-        String[] names = german ? new String[]{"Inventar", "Truhe", "Würfel", "Söldner", "Quests"}
-            : new String[]{"Inventory", "Stash", "Cube", "Mercenary", "Quests"};
+        String[] names = german ? new String[]{"Inventar", "Fertigk.", "Truhe", "Würfel", "Söldner", "Quests"}
+            : new String[]{"Inventory", "Skills", "Stash", "Cube", "Merc", "Quests"};
         float w = (1224 - 616) / (float) names.length;
         for (int i = 0; i < names.length; i++) {
             final int which = i;
@@ -415,6 +416,84 @@ public final class D2Deck extends View {
             body(c, ellipsize(it.oneLine(), area.width() - 140, 22), area.left + 100, y, 22, qualityColor(it), Paint.Align.LEFT);
             y += 58;
         }
+    }
+
+    // ---- skills on keys: tap a skill, then a target; the mod sends the game's own packets -------------------------
+
+    private int pickedSkill = -1;
+    // F1..F8 on the Thor pad (D2Gamepad.defaultAction): X, Y, R3, RB+R3, RB+X, RB+Y, RB+A, RB+B.
+    private static final String[] KEY_PAD = {"X", "Y", "R3", "RB+R3", "RB+X", "RB+Y", "RB+A", "RB+B"};
+
+    private void drawSkillKeys(Canvas c, D2Hud hud, D2ModLink link, D2ModState s, RectF area) {
+        panel(c, hud, area.left, area.top, area.right, area.bottom);
+        D2Points pts = link.points(3000);
+        List<Integer> learnt = new ArrayList<>();
+        learnt.add(0);
+        if (pts != null && pts.baseLevels != null)
+            for (int i = 0; i < pts.baseLevels.length; i++) if (pts.baseLevels[i] > 0) learnt.add(pts.firstSkill + i);
+        body(c, pickedSkill < 0 ? t("1. Tap a skill", "1. Fertigkeit antippen")
+            : t("2. Tap where it goes: ", "2. Ziel antippen: ") + skillName(hud, pickedSkill), area.left + 24, area.top + 40, 22, GOLD, Paint.Align.LEFT);
+        float size = 52, gap = 8, x = area.left + 24, y = area.top + 58;
+        for (int id : learnt) {
+            boolean passive = hud != null && hud.skillPassive(id) == 1;
+            RectF a = new RectF(x, y, x + size, y + size);
+            fill.setColor(id == pickedSkill ? 0x80C7B377 : 0xFF0A0807);
+            c.drawRect(a.left - 4, a.top - 4, a.right + 4, a.bottom + 4, fill);
+            Bitmap b = hud != null ? hud.skillIcon(id) : null;
+            if (b != null) {
+                icon.setAlpha(passive ? 90 : 255);
+                c.drawBitmap(b, null, a, icon);
+                icon.setAlpha(255);
+            }
+            else body(c, ellipsize(skillName(hud, id), size, 14), a.centerX(), a.centerY() + 5, 14, TEXT, Paint.Align.CENTER);
+            int level = id > 0 && pts != null && id - pts.firstSkill >= 0 && id - pts.firstSkill < pts.baseLevels.length
+                ? pts.baseLevels[id - pts.firstSkill] : 0;
+            if (level > 0) body(c, String.valueOf(level), a.right - 2, a.bottom - 2, 16, TEXT, Paint.Align.RIGHT);
+            if (!passive) hits.add(new Hit(a, () -> pickedSkill = pickedSkill == id ? -1 : id));
+            x += size + gap;
+            if (x + size > area.right - 20) {
+                x = area.left + 24;
+                y += size + gap;
+            }
+        }
+        float ty = Math.max(y + size + 36, area.top + 200);
+        body(c, t("Mouse buttons", "Maustasten"), area.left + 24, ty, 20, DIM, Paint.Align.LEFT);
+        target(c, hud, new RectF(area.left + 24, ty + 12, area.left + 296, ty + 76), t("Left (A)", "Links (A)"), s.leftSkill,
+            () -> link.selectSkill(true, pickedSkill));
+        target(c, hud, new RectF(area.left + 312, ty + 12, area.right - 24, ty + 76), t("Right", "Rechts"), s.rightSkill,
+            () -> link.selectSkill(false, pickedSkill));
+        ty += 108;
+        body(c, t("Skill keys (pad)", "Fertigkeitstasten (Pad)"), area.left + 24, ty, 20, DIM, Paint.Align.LEFT);
+        boolean keys = pts != null && pts.canSend(D2Points.KIND_KEY);
+        for (int i = 0; i < 8; i++) {
+            final int key = i;
+            float cx = area.left + 24 + (i % 2) * 288, cy = ty + 10 + (i / 2) * 62;
+            target(c, hud, new RectF(cx, cy, cx + 272, cy + 56), "F" + (i + 1) + " " + KEY_PAD[i], s.hotkeySkill[i],
+                keys ? () -> link.points(D2Points.KIND_KEY, pickedSkill, key, true) : null);
+        }
+    }
+
+    private void target(Canvas c, D2Hud hud, RectF a, String label, int current, Runnable assign) {
+        panel(c, hud, a.left, a.top, a.right, a.bottom);
+        Bitmap b = hud != null && current >= 0 ? hud.skillIcon(current) : null;
+        RectF ic = new RectF(a.left + 8, a.top + 8, a.left + a.height() - 8, a.bottom - 8);
+        if (b != null) c.drawBitmap(b, null, ic, icon);
+        body(c, label, ic.right + 10, a.top + 26, 16, DIM, Paint.Align.LEFT);
+        body(c, current >= 0 ? ellipsize(skillName(hud, current), a.right - ic.right - 20, 20) : "–", ic.right + 10, a.top + 52, 20,
+            pickedSkill >= 0 && assign != null ? GOLD : TEXT, Paint.Align.LEFT);
+        if (assign != null) hits.add(new Hit(a, () -> {
+            if (pickedSkill < 0) return;
+            D2ModLink link = host.link();
+            D2ModState now = link != null ? link.state() : null;
+            if (now != null && now.paused()) {
+                // The mod takes no commands while the game is paused.
+                note(t("Game paused: continue on the upper screen first", "Spiel pausiert: erst oben fortsetzen"));
+                return;
+            }
+            assign.run();
+            note(t("Set: ", "Gelegt: ") + skillName(hud, pickedSkill) + " → " + label);
+            pickedSkill = -1;
+        }));
     }
 
     private static final String[][] QUESTS_EN = {

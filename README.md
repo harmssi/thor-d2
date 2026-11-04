@@ -35,6 +35,9 @@ If it works for you, a ⭐ on GitHub helps.
 - **Skills:** left and right skill (with icons from your own game files), F1–F8.
 - **Effects and auras** with time left.
 - **Area and act**, town or not.
+- **Skills on keys:** in the *Skills* tab tap a learnt skill, then where it goes: left/right mouse button or F1–F8
+  (on the pad X, Y, R3, RB+R3, RB+X, RB+Y, RB+A, RB+B). The current keys show with icon and name. The deck uses the
+  game's own skill and hotkey commands (single player); the controller stays with the game.
 - **Tabs:** Inventory (grid with item names in quality colours, belt, equipped items), Stash, Cube, Mercenary
   (life, level, equipment), Quests (state of every quest of the current act, progress of the others, next goal).
 - Tap an item for its full name.
@@ -83,6 +86,23 @@ except Start, RB and the D-pad can be changed under **Settings → Controls → 
 
 Differences to D2Android: RB is the second-row button (D2Android: LT), so the triggers can drink; the D-pad gives
 map and portal instead of belt 1/2 (LT/RT drink those).
+
+## Fresh installation without losing saved games (adb)
+
+For a clean reinstall (e.g. to film the installation) the saves can be parked and brought back. The app accepts
+these commands only with a fresh token from the adb shell and only while no game runs:
+
+```bash
+adb shell 'touch /data/local/tmp/d2android-spieltest.ok; chmod 600 /data/local/tmp/d2android-spieltest.ok'
+adb shell am start -n de.harmssi.thord2/com.winlator.d2.D2LaunchActivity -e d2_saves_spiegel aus        # copy saves out
+adb pull /sdcard/Android/data/de.harmssi.thord2/files/spiegel/saves ./thord2-saves                      # keep a copy
+adb shell am start -n de.harmssi.thord2/com.winlator.d2.D2LaunchActivity -e d2_saves_spiegel spiel-weg  # saves out, then remove only the game
+# … install again in the app …  then (new token first):
+adb shell am start -n de.harmssi.thord2/com.winlator.d2.D2LaunchActivity -e d2_saves_spiegel ein        # saves back
+```
+
+The result of each step is in `/sdcard/Android/data/de.harmssi.thord2/files/spiegel/ergebnis.txt`. `spiel-weg` checks
+that every character (`.d2s`) is in the copy before it deletes anything, and never touches the saves folder.
 
 ## Building
 

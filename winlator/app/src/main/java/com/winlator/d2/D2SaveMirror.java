@@ -50,8 +50,29 @@ final class D2SaveMirror {
     }
 
 
+    // Thor D2: "spiel-weg" – for a fresh installation (e.g. to film it) without losing saved games. The saves are
+    // mirrored to Android/data/<package>/files/spiegel/saves first (every .d2s checked), then only the game folder
+    // goes; the app then shows "no game set up". After the new installation "ein" copies the saves back.
+    private static String removeGameKeepSaves(File mirror) throws IOException {
+        File saves = D2Store.saves(), game = D2Store.game();
+        D2Umzug.mirrorOut(saves, mirror);
+        File copy = new File(mirror, D2Umzug.SAVES);
+        String[] names = saves.list();
+        int checked = 0;
+        for (String n : names != null ? names : new String[0]) {
+            if (!n.toLowerCase(java.util.Locale.ROOT).endsWith(".d2s")) continue;
+            File a = new File(saves, n), b = new File(copy, n);
+            if (!b.isFile() || b.length() != a.length()) return "fehler: " + n + " nicht gespiegelt, nichts geloescht";
+            checked++;
+        }
+        D2Umzug.delete(game);
+        if (game.exists()) return "fehler: Spielordner nicht ganz geloescht (Spielstaende liegen im Spiegel)";
+        return "ok spiel-weg (" + checked + " Charaktere im Spiegel)";
+    }
+
     private static String run(String direction, File mirror) {
-        if (!"aus".equals(direction) && !"ein".equals(direction)) return "fehler: aus oder ein, nicht " + direction;
+        if (!"aus".equals(direction) && !"ein".equals(direction) && !"spiel-weg".equals(direction))
+            return "fehler: aus, ein oder spiel-weg, nicht " + direction;
         if (mirror == null) return "fehler: kein App-Ordner auf dem gemeinsamen Speicher";
 
         new File(mirror, RESULT).delete();
@@ -59,6 +80,7 @@ final class D2SaveMirror {
         if (D2TouchOverlay.isGameRunning() || !D2Saves.beginImport()) return "fehler: das Spiel laeuft oder startet gerade";
         try {
             if (!D2Store.ready()) return "nicht intern";
+            if ("spiel-weg".equals(direction)) return removeGameKeepSaves(mirror);
             if ("aus".equals(direction)) D2Umzug.mirrorOut(D2Store.saves(), mirror);
             else D2Umzug.mirrorIn(mirror, D2Store.base());
             return "ok " + direction;
