@@ -1,0 +1,81 @@
+Thor D2 0.1.0 – source code offer
+
+Thor D2 is a fork of D2Android 1.5.2 (https://github.com/N1v0k/D2Android-Releases). It contains the same
+third-party free software under the GNU GPL and LGPL, in the same versions; only the package path inside the
+runtime differs (tools/build-runtime.py). The list below is D2Android's offer for those parts, unchanged
+(the archives stay mirrored in D2Android's release sources-2-a329647c5f379676 and at their upstream locations).
+
+The complete source of Thor D2 itself – the app including all parts taken over from Winlator (LGPL-2.1) with
+D2Android's and Thor D2's changes, the mod and the build scripts – is attached to every Thor D2 release as
+thor-d2-<version>-source.tar.gz and is the repository https://github.com/harmssi/thor-d2.
+
+----- D2Android 1.5.2 source code offer (third-party parts) -----
+
+This app contains free software under the GNU GPL and LGPL. For each part below you can get its source code
+from the location given, at no charge. Parts marked "best effort" (Wine, glibc, GCC, ALSA) come as the
+upstream source of the same version: their exact build cannot be proven byte for byte, and patches the
+builder did not publish are not included. All other parts come as their complete corresponding source.
+The licence texts are on the page "Licenses" in the app (assets/licenses/).
+
+Source archives (runtime 2-a329647c5f379676, mirrored in release sources-2-a329647c5f379676):
+
+- wine 9.2 (LGPL-2.1-or-later)
+  Source:   https://github.com/N1v0k/D2Android-Releases/releases/download/sources-2-a329647c5f379676/wine-9.2.tar.xz (SHA-256 8281c5a082cc47ac3c2c91ceaade5f17396553b39adcb32e741253865b658162)
+  Upstream: https://dl.winehq.org/wine/source/9.x/wine-9.2.tar.xz
+  Note:     best effort: the upstream source of the same version; the exact build of the shipped
+            binary cannot be proven byte for byte – the shipped binary is Winlator 10.1's build of Wine 9.2 with patches Winlator did not publish; they are not included
+
+- glibc 2.39 (LGPL-2.1-or-later)
+  Source:   https://github.com/N1v0k/D2Android-Releases/releases/download/sources-2-a329647c5f379676/glibc-2.39.tar.xz (SHA-256 f77bd47cf8170c57365ae7bf86696c118adb3b120d3259c64c502d3dc1e2d926)
+  Upstream: https://ftp.gnu.org/gnu/glibc/glibc-2.39.tar.xz
+  Note:     best effort: the upstream source of the same version; the exact build of the shipped
+            binary cannot be proven byte for byte – version from the shipped library; build patches of the Winlator rootfs are unknown
+
+- gcc 13.2.0 (GPL-3.0-or-later WITH GCC-exception-3.1)
+  Source:   https://github.com/N1v0k/D2Android-Releases/releases/download/sources-2-a329647c5f379676/gcc-13.2.0.tar.xz (SHA-256 e275e76442a6067341a27f04c5c6b83d8613144004c0413528863dc6b5c743da)
+  Upstream: https://ftp.gnu.org/gnu/gcc/gcc-13.2.0/gcc-13.2.0.tar.xz
+  Note:     best effort: the upstream source of the same version; the exact build of the shipped
+            binary cannot be proven byte for byte – libstdc++.so.6.0.32 says "GCC: (GNU) 13.2.0"; build configuration unknown
+
+- alsa-lib 1.2.13 (LGPL-2.1-or-later)
+  Source:   https://github.com/N1v0k/D2Android-Releases/releases/download/sources-2-a329647c5f379676/alsa-lib-1.2.13.tar.bz2 (SHA-256 8c4ff37553cbe89618e187e4c779f71a9bb2a8b27b91f87ed40987cc9233d8f6)
+  Upstream: https://www.alsa-project.org/files/pub/lib/alsa-lib-1.2.13.tar.bz2
+  Note:     best effort: the upstream source of the same version; the exact build of the shipped
+            binary cannot be proven byte for byte – version string in libasound.so.2.0.0; build patches unknown
+
+- d2dx 0.99.529 (GPL-3.0-only)
+  Source:   https://github.com/N1v0k/D2Android-Releases/releases/download/sources-2-a329647c5f379676/d2dx-6929e4f9a96ec0f1f5c9226ec2b488a5ef49fa50.tar.gz (git archive of commit 6929e4f9a96ec0f1f5c9226ec2b488a5ef49fa50)
+  Upstream: https://github.com/bolrog/d2dx/tree/6929e4f9a96ec0f1f5c9226ec2b488a5ef49fa50
+
+- plugy 14.03 (GPL-3.0-only)
+  Source:   https://github.com/N1v0k/D2Android-Releases/releases/download/sources-2-a329647c5f379676/plugy-64792db947bafeadb9dd9ead8827eefbb07a48bf.tar.gz (git archive of commit 64792db947bafeadb9dd9ead8827eefbb07a48bf)
+  Upstream: https://github.com/ChaosMarc/PlugY/tree/64792db947bafeadb9dd9ead8827eefbb07a48bf
+
+- winlator 11.2 (3981d86) (LGPL-2.1-or-later)
+  Source:   https://github.com/N1v0k/D2Android-Releases/releases/download/sources-2-a329647c5f379676/winlator-3981d86efa4f333b2a34a7da8b6521476cd8c8b9.tar.gz (git archive of commit 3981d86efa4f333b2a34a7da8b6521476cd8c8b9)
+  Upstream: https://github.com/brunodev85/winlator-app/tree/3981d86efa4f333b2a34a7da8b6521476cd8c8b9
+
+- winlator-alsa b6b2259 (LGPL-2.1-or-later)
+  Source:   https://github.com/N1v0k/D2Android-Releases/releases/download/sources-2-a329647c5f379676/winlator-alsa-b6b2259158cf38d06067c34430d840d56b46d220.tar.gz (git archive of commit b6b2259158cf38d06067c34430d840d56b46d220)
+  Upstream: https://github.com/brunodev85/winlator/tree/b6b2259158cf38d06067c34430d840d56b46d220/android_alsa
+
+- vortek b1730c5 (LGPL-2.1-only)
+  Source:   https://github.com/N1v0k/D2Android-Releases/releases/download/sources-2-a329647c5f379676/vortek-b1730c5def9b575672e671aee11d79ae7adc63d1.tar.gz (git archive of commit b1730c5def9b575672e671aee11d79ae7adc63d1)
+  Upstream: https://github.com/brunodev85/vortek/tree/b1730c5def9b575672e671aee11d79ae7adc63d1
+
+Changes to prebuilt third-party files (DXVK, D2DX), each described with its source diff in the D2Android
+source code:
+  the Thor D2 source (thor-d2-<version>-source.tar.gz) and the D2Android 1.5.2 source
+  - tools/patches/d2dx-0.99.529-atlas-1024.patch
+  - tools/patches/d2dx-0.99.529-atlas-512.patch
+  - tools/patches/d2dx-0.99.529-comexception-hresult.patch
+  - tools/patches/d2dx-0.99.529-frametime-clamp.patch
+  - tools/patches/d2dx-0.99.529-ingame-resolution.patch
+  - tools/patches/dxvk-2.4.1-d3d11-skip-buffer-clear.patch
+  - tools/patches/turnip-26.2.0-a840-2slice.patch
+  - tools/patches/vortek-client-b1730c5-leaks.patch
+  - tools/patches/vortek-client-b1730c5-maperrno.patch
+
+Written offer: for at least three years after the last distribution of this version, anyone can get the
+source code above from the Thor D2 maintainer on a physical medium for no more than the cost of
+distribution, by opening an issue at https://github.com/harmssi/thor-d2/issues.

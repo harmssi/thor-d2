@@ -1,66 +1,112 @@
-# D2Android 1.5.2 – source code
+# Thor D2
 
-D2Android runs the original Diablo II: Lord of Destruction 1.13d on Android phones (ARM64) with touch controls.
-It is an unofficial fan project, **not affiliated with, endorsed or supported by Blizzard Entertainment**. You need
-your own copy of the game; no game files are part of this archive.
+**Diablo II: Lord of Destruction 1.13d on the AYN Thor, with a live deck on the second screen.**
 
-This archive is the source of the public app (package `at.d2andrpub`) of release 1.5.2: the Android app
-(`winlator/`, Java and a small native part), the scripts that put together the runtime (Box64, Wine, Turnip, DXVK),
-and the mod (`mod/`, C for MinGW) that runs inside `Game.exe`. It holds only what the build needs. Comments are
-removed; every line keeps its number, so the code is line for line the code of the APK.
+Thor D2 is a fork of [D2Android](https://github.com/N1v0k/D2Android-Releases) 1.5.2 for dual-screen Android
+handhelds such as the AYN Thor. The game runs on the upper screen as a clean picture without touch buttons; the
+lower screen shows a deck with your character, items, skills and quests, live from the game.
 
-## Not included
+If it works for you, a ⭐ on GitHub helps.
 
-- Game files, signing keys, prebuilt third-party binaries: the scripts below download every third-party part from
-  its original location and check it against a pinned SHA-256.
-- Tests and development tools.
+> Unofficial fan project, **not affiliated with, endorsed or supported by Blizzard Entertainment**. Diablo is a
+> trademark or registered trademark of Blizzard Entertainment, Inc. You need your own, purchased copy of Diablo II
+> and Lord of Destruction (CD keys from your Battle.net account, or an existing 1.13d installation). The app
+> contains no game files.
 
-## Build (Linux x86_64)
+## Quick start
 
-Needs: JDK 17, the Android SDK with `platforms;android-35`, `build-tools;34.0.0`, `ndk;24.0.8215888` and
-`cmake;3.22.1`, Python 3, curl, unzip, xz, zstd, `gcc-aarch64-linux-gnu`, `libasound2-dev`, `libx11-dev`
-and `gcc-mingw-w64-i686` (with `binutils-mingw-w64-i686`).
+1. Download `ThorD2-<version>.apk` from the [Releases](https://github.com/harmssi/thor-d2/releases) and install
+   it (Play Protect may warn because the app targets an older Android version: **More details → Install anyway**).
+   It installs next to D2Android (package `de.harmssi.thord2`), so both can stay.
+2. Open **Thor D2** and allow storage, notifications and background running.
+3. **Install the game (without a PC)**: choose English or German and type in your two CD keys (Diablo II and
+   Lord of Destruction, from your Blizzard account under *Games & Subscriptions*). The app downloads Blizzard's
+   official installers, installs into its own storage and patches to 1.13d (about 2 GB download; use Wi-Fi).
+   The keys go straight to Blizzard's installer and are never stored.
+   *Or* copy an existing Diablo II 1.13d folder (with `Game.exe`, `d2data.mpq`, `d2exp.mpq`, …) to the device and
+   use **Choose game folder**.
+4. Start a character. The deck appears on the lower screen by itself.
+
+## The deck (lower screen)
+
+- **Character:** name, class, level, difficulty; life, mana, experience to the next level; resistances as the
+  character screen shows them (difficulty penalty included); strength, dexterity, vitality, energy, defense,
+  magic find, unspent stat and skill points; gold and stash gold.
+- **Skills:** left and right skill (with icons from your own game files), F1–F8.
+- **Effects and auras** with time left.
+- **Area and act**, town or not.
+- **Tabs:** Inventory (grid with item names in quality colours, belt, equipped items), Stash, Cube, Mercenary
+  (life, level, equipment), Quests (state of every quest of the current act, progress of the others, next goal).
+- Tap an item for its full name.
+- **Sort inventory:** D2Android's sort moves the items one by one with normal pick-up and put-down actions of the
+  game, never by writing item positions into memory. Single player only; in multiplayer the deck's actions are off.
+  It does not start while a shop, trade or the stash is open, a monster is near, or the game is paused.
+- **Portal** and **Potion** buttons.
+
+The deck is a plain, dark design of its own; it ships no Blizzard graphics. Skill icons are read at runtime from
+your own game files, as D2Android does for its bars.
+
+## Controls on the AYN Thor
+
+The deck window cannot take focus, so the controller always stays with the game. Layout (Xbox naming, A is the
+right face button and confirms):
+
+| Button | Action | With **RB** held |
+|---|---|---|
+| Left stick | walk | |
+| A | attack / main skill (left skill) | F7 |
+| B | pick up ("Take"; hold: ring of targets) | F8 |
+| X | skill F1 | F5 |
+| Y | skill F2 | F6 |
+| R3 | skill F3 | F4 |
+| LB | swap weapons | swap weapons |
+| RB | hold: second row of skills | |
+| LT | healing potion | rejuvenation potion |
+| RT | mana potion | item names |
+| D-pad up / down | map / town portal | belt 4 / 3 to the mercenary |
+| D-pad left / right | belt 3 / 4 | belt 1 / 2 to the mercenary |
+| Start | game menu (hold: app menu) | |
+| Select (View) | inventory (hold: wheel of the game's windows) | |
+| L3 | run / walk | |
+
+In the inventory, stash, shops and menus the stick moves a pointer and A clicks, as in D2Android. Every button
+except Start, RB and the D-pad can be changed under **Settings → Controls → Gamepad**.
+
+Differences to D2Android: RB is the second-row button (D2Android: LT), so the triggers can drink; the D-pad gives
+map and portal instead of belt 1/2 (LT/RT drink those).
+
+## Building
+
+Linux x86_64 with Docker, or any machine as D2Android's [build notes](README.upstream.md) describe.
 
 ```bash
-export ANDROID_HOME=$HOME/Android/Sdk          # your SDK
-bash tools/fetch-winlator101.sh                # Wine 9.2 (from Winlator 10.1), D2DX, PlugY
-bash tools/collect-licenses.sh                 # licence texts for the app's "Licenses" page
-bash tools/build-runtime.sh --public           # runtime archive for at.d2andrpub (a few minutes)
-bash tools/build-mod.sh                        # mod DLL, loader and installer helpers
-cd winlator
-echo "sdk.dir=$ANDROID_HOME" > local.properties
-./gradlew assembleRelease -Pd2VersionName=1.5.2 -Pd2VersionCode=<number> \
-    -Pd2ReleaseKeystore=/path/to/your-key.p12 -Pd2ReleaseKeystorePassword=...
+export THOR_BUILD_HOST=user@linux-host-with-docker   # builds there in the image from thor/Dockerfile
+./thor/build.sh            # -> dist/ThorD2.apk (signed with a key kept on the build host)
+./thor/build.sh --install  # and adb install -r
 ```
 
-`d2VersionCode` must be higher than the one of an installed build for Android to accept it as an update.
+The image adds MinGW, an aarch64 cross compiler, NDK 24 and CMake to an Android build image (JDK 17, SDK 35).
+The build downloads every third-party part from its original location and checks the pinned SHA-256, exactly as
+D2Android's scripts do.
 
-Without `-Pd2ReleaseKeystore` the result is unsigned (`app/build/outputs/apk/release/app-release-unsigned.apk`); sign
-it with `apksigner` and a key of your own. The keystore given to Gradle is PKCS#12 with the key alias `d2android`, e.g.
-`keytool -genkeypair -storetype PKCS12 -keystore your-key.p12 -alias d2android -keyalg RSA -keysize 4096 -validity 10000`.
-An APK signed with your key cannot update the official app: uninstall that first. That also removes the game and your
-saved games inside the app: share your saved games first and load them again afterwards.
-
-`fetch-winlator101.sh` repacks Wine from the Winlator 10.1 APK; the bytes differ from the official build, so the
-runtime gets another version (the build says so, it works the same). To use the official runtime instead, take
-`assets/d2/runtime.txz` from the public APK of the same release and put it with a `runtime-info.txt` (from the
-`--public` build) into `winlator/app/src/release/assets/d2/`.
-
-**The build is not byte-identical to the official APK.** The runtime archive (with the repacked Wine package),
-timestamps inside the build and the signature differ. The code is the same: this archive is made from the commit
-the release was built from, with nothing changed but the comments.
+Thor D2 changes against D2Android 1.5.2 (see `git log`):
+- package `de.harmssi.thord2`; the runtime's 12-byte package path is rewritten as `/data/data/<package>//rootfs`
+  and the app links `<data dir>/rootfs` to `files/rootfs` (`tools/build-runtime.py`, `D2Runtime`);
+- `mod/d2deck.c` (read-only deck data), `D2DeckData`, `D2Deck`, `D2DeckScreen`;
+- Thor controller layout (`D2Gamepad`, `D2GamepadInput`, `D2TouchOverlay.padBelt`);
+- update check and bug report point to this repository; no telemetry key is built in.
 
 ## Licences
 
-| Path | Licence |
-|---|---|
-| `winlator/app/src/main/java/com/winlator/d2/` (D2Android's own app code), `mod/`, `tools/` except `tools/alsa-plugin/`, `README.md` | MIT (`LICENSE`), Copyright (c) 2026 The D2Android authors |
-| everything else under `winlator/`: the other packages under `com/winlator/`, `app/src/main/cpp/`, resources, assets, manifests and Gradle files of the project taken over from Winlator 11.2 (https://github.com/brunodev85/winlator-app) | GNU LGPL 2.1 (`winlator/LICENSE`); a file D2Android changed says so in its first line ("Modified by D2Android") |
-| `tools/alsa-plugin/` (Winlator's `android_alsa/module_pcm_android_aserver.c` with D2Android's changes) | GNU LGPL 2.1 |
-| code ported from elsewhere inside D2Android's own files: `D2Xbr.java` (Hyllian's xBR-lv2), `D2StormAudio.java` (StormLib), `D2Mpq.java` (blast.c by Mark Adler) | their own licences (MIT, MIT, zlib), as stated in each file |
-| except `winlator/gradlew`, `winlator/gradlew.bat`, `winlator/gradle/wrapper/` | Apache 2.0 (Gradle) |
+- D2Android's own code (`winlator/app/src/main/java/com/winlator/d2/`, `mod/`, `tools/` except
+  `tools/alsa-plugin/`) and Thor D2's additions: MIT, Copyright (c) 2026 The D2Android authors (`LICENSE`).
+- Parts taken over from Winlator: GNU LGPL 2.1 (`winlator/LICENSE`), see [README.upstream.md](README.upstream.md).
+- Third-party components: [THIRD-PARTY-NOTICES.txt](THIRD-PARTY-NOTICES.txt); their sources:
+  [SOURCE-OFFER.txt](SOURCE-OFFER.txt). See also [NOTICE](NOTICE).
 
-The MIT licence covers D2Android's own code only; it does not change the licence of the Winlator parts or of any
-third-party code. The third-party parts the build downloads (Box64, Wine, Mesa Turnip, DXVK, D2DX, PlugY and the
-libraries of the runtime), with their licences and sources, are listed in
-`winlator/app/src/main/assets/licenses/index.tsv`, on the app's page "Licenses" and in SOURCE-OFFER.txt of the release.
+## Thanks
+
+All the hard work – running Diablo II through Wine and Box64 on Android, the mod inside `Game.exe`, the
+installer with Blizzard's own files, sorting, the gamepad support – is **D2Android** by
+[N1v0k](https://github.com/N1v0k) and the D2Android authors. Thank you! Thor D2 only adds the second screen and a
+Thor layout. Thanks as well to Winlator, Wine, Box64, Mesa Turnip, DXVK, D2DX and PlugY.

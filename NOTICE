@@ -1,0 +1,14 @@
+Thor D2
+Copyright (c) 2026 The D2Android authors (D2Android 1.5.2, MIT, see LICENSE)
+Thor D2 changes (c) 2026 harmssi, under the same licences as the files they change.
+
+Thor D2 is a fork of D2Android (https://github.com/N1v0k/D2Android-Releases) for the AYN Thor.
+The parts taken over from Winlator 11.2 (everything under winlator/ outside com/winlator/d2/, and
+tools/alsa-plugin/) stay under the GNU LGPL 2.1 (winlator/LICENSE); README.upstream.md has the full table.
+Third-party components of the app and its runtime (Wine, Box64, Mesa Turnip, DXVK, D2DX, PlugY, glibc, ...)
+are listed with their licences in THIRD-PARTY-NOTICES.txt and in the app (Licenses page); where to get their
+source is in SOURCE-OFFER.txt.
+
+Diablo, Diablo II and Lord of Destruction are trademarks or registered trademarks of Blizzard Entertainment,
+Inc. This project is not affiliated with, endorsed or supported by Blizzard Entertainment. It contains no game
+files: you need your own copy of Diablo II and Lord of Destruction.

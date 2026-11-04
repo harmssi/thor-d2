@@ -566,8 +566,8 @@
     <string name="helper_padMap_label">Tasten</string>
     <string name="helper_padMap_info">Tippe auf ein Feld, um einer Taste eine Aufgabe zu geben. Eine Fertigkeit auf F1–F8 legst du im Bearbeiten-Modus fest: Pad-Taste drücken, mit dem Stick auf die Fertigkeit zeigen, A drücken. „Nehmen“ lange halten öffnet den Ring der Ziele: Stick wählt, A nimmt, Kreuz links/rechts blättert.</string>
     <string name="helper_pad_layer1">Taste</string>
-    <string name="helper_pad_layer2">Mit LT gehalten</string>
-    <string name="helper_pad_fixed">Immer gleich: linker Stick läuft, LT halten gibt die zweite Reihe, Kreuz trinkt aus dem Gürtel, Start öffnet das Spielmenü (halten: App-Menü), View wie unten belegt, ab Werk das Inventar (halten: Rad mit den Fenstern des Spiels, ein Stick wählt, loslassen öffnet). In Fenstern bewegt der Stick den Zeiger, A klickt, X klickt rechts (im Laden: kaufen, auf eigenen Gegenständen verkaufen), B schließt Fenster, Räder und Gespräche (ohne Fenster bleibt B wie belegt); R3 halten ordnet das offene Inventar.</string>
+    <string name="helper_pad_layer2">Mit RB gehalten</string>
+    <string name="helper_pad_fixed">Immer gleich: linker Stick läuft, RB halten gibt die zweite Reihe, Kreuz: oben Karte, unten Stadtportal, links/rechts Gürtel 3/4, mit RB Gürtel 1–4 für den Söldner, Start öffnet das Spielmenü (halten: App-Menü), View wie unten belegt, ab Werk das Inventar (halten: Rad mit den Fenstern des Spiels, ein Stick wählt, loslassen öffnet). In Fenstern bewegt der Stick den Zeiger, A klickt, X klickt rechts (im Laden: kaufen, auf eigenen Gegenständen verkaufen), B schließt Fenster, Räder und Gespräche (ohne Fenster bleibt B wie belegt); R3 halten ordnet das offene Inventar.</string>
     <string name="helper_pad_none">Noch kein Gamepad gesehen</string>
     <string name="helper_pad_seen">Gesehen: %1$s, letzte Taste %2$s</string>
     <string name="helper_padDeadzone_label">Wie weit der Stick sich bewegen muss</string>

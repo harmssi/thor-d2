@@ -569,8 +569,8 @@
     <string name="helper_padMap_label">Buttons</string>
     <string name="helper_padMap_info">Tap a box to give a button a job. You put a skill on F1–F8 in edit mode: press the pad button, point at the skill with the stick, press A. Holding \"Take\" opens the ring of targets: the stick chooses, A takes, the cross left/right turns the page.</string>
     <string name="helper_pad_layer1">Button</string>
-    <string name="helper_pad_layer2">With LT held</string>
-    <string name="helper_pad_fixed">Always the same: left stick walks, holding LT gives the second row, the cross drinks from the belt, Start opens the game menu (hold: app menu), View as assigned below, the inventory by default (hold: a wheel of the game\'s windows, a stick chooses, let go opens). In windows the stick moves the pointer, A clicks, X clicks right (in a shop: buy, on your own items sell), B closes windows, wheels and talks (without a window B stays as assigned); holding R3 in the inventory sorts it.</string>
+    <string name="helper_pad_layer2">With RB held</string>
+    <string name="helper_pad_fixed">Always the same: left stick walks, holding RB gives the second row, the cross gives map (up), town portal (down) and belt 3/4 (left/right), with RB held belt 1–4 to the mercenary, Start opens the game menu (hold: app menu), View as assigned below, the inventory by default (hold: a wheel of the game\'s windows, a stick chooses, let go opens). In windows the stick moves the pointer, A clicks, X clicks right (in a shop: buy, on your own items sell), B closes windows, wheels and talks (without a window B stays as assigned); holding R3 in the inventory sorts it.</string>
     <string name="helper_pad_none">No gamepad seen yet</string>
     <string name="helper_pad_seen">Seen: %1$s, last button %2$s</string>
     <string name="helper_padDeadzone_label">How far the stick has to move</string>
