@@ -43,8 +43,17 @@ If it works for you, a ⭐ on GitHub helps.
   It does not start while a shop, trade or the stash is open, a monster is near, or the game is paused.
 - **Portal** and **Potion** buttons.
 
-The deck is a plain, dark design of its own; it ships no Blizzard graphics. Skill icons are read at runtime from
-your own game files, as D2Android does for its bars.
+**Looks like the game, ships nothing of it:** frames, life and mana orbs, fonts, skill icons and the item pictures in
+the grids are read at runtime from your own game files (MPQs), as D2Android does for its bars. Without them the deck
+falls back to a plain dark look of its own.
+
+While the deck shows, the upper screen is the plain game picture: D2Android's widescreen at 960×540, scaled exactly
+2× to the Thor's 1920×1080 OLED (sharp, no borders), without touch buttons or the menu row.
+
+**Installation on the Thor:** all pages run in landscape; during the installation the lower screen shows the steps
+(downloader, Lord of Destruction, Diablo II, CD keys, install, patch 1.13d, check), the progress and hints. The CD key
+fields are masked and the key page cannot be captured by screenshots or screen recordings. The D-pad moves between
+fields and buttons, A confirms, B goes back.
 
 ## Controls on the AYN Thor
 
@@ -92,7 +101,8 @@ D2Android's scripts do.
 Thor D2 changes against D2Android 1.5.2 (see `git log`):
 - package `de.harmssi.thord2`; the runtime's 12-byte package path is rewritten as `/data/data/<package>//rootfs`
   and the app links `<data dir>/rootfs` to `files/rootfs` (`tools/build-runtime.py`, `D2Runtime`);
-- `mod/d2deck.c` (read-only deck data), `D2DeckData`, `D2Deck`, `D2DeckScreen`;
+- `mod/d2deck.c` (read-only deck data), `D2DeckData`, `D2Deck`, `D2DeckArt`, `D2DeckScreen`, `D2InstallDeck`;
+- landscape pages, masked CD key fields (`FLAG_SECURE`), no touch menu row while the deck shows;
 - Thor controller layout (`D2Gamepad`, `D2GamepadInput`, `D2TouchOverlay.padBelt`);
 - update check and bug report point to this repository; no telemetry key is built in.
 
