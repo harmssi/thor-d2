@@ -214,10 +214,11 @@ public class D2GameActivity extends D2Activity {
 
         overlay.setModExpected(GameShadow.LOADER_EXE.equals(getIntent().getStringExtra(EXTRA_PROGRAM)));
         screen.addOverlay(overlay);
-        deckScreen = new D2DeckScreen(this, new D2Deck.Host() {
+        deckScreen = new D2DeckScreen(this, D2DeckScreen.deck(new D2Deck.Host() {
             @Override public D2ModLink link() { return overlay != null ? overlay.modLink() : null; }
             @Override public D2Hud hud() { return overlay != null ? overlay.deckHud() : null; }
-        }, shown -> { if (overlay != null) overlay.setDeckShown(shown); });
+            @Override public java.io.File gameDir() { return overlay != null ? overlay.deckGameDir() : null; }
+        }), shown -> { if (overlay != null) overlay.setDeckShown(shown); });
         deckScreen.start();
 
 

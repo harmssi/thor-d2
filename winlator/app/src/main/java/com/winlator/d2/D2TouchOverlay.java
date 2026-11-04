@@ -479,6 +479,10 @@ public class D2TouchOverlay extends View {
         return hud;
     }
 
+    File deckGameDir() {
+        return gameDir;
+    }
+
     private boolean padStickActive, padStickHasDirection;
     private float padDirX = 1, padDirY;
 
@@ -1477,6 +1481,8 @@ public class D2TouchOverlay extends View {
     }
 
     private boolean isVisible(Button button) {
+        // Thor D2: the deck on the second screen replaces the menu row, the game screen stays free.
+        if (deckShown && !editMode && button.group == GROUP_MENU) return false;
         if (button.group == GROUP_GAME && padHidesControls()) return false;
         if (button.kind == KIND_INTERACT && mod == null && !editMode) return false;
         if (button.kind == KIND_WEAPON_SWAP && !weaponSwapWanted) return false;

@@ -94,6 +94,16 @@ public class D2InstallActivity extends D2Activity {
 
         getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         buildUI();
+        // Thor D2: steps, progress and hints on the second screen.
+        installDeck = new D2DeckScreen(this, D2InstallDeck.page(new D2InstallDeck.Host() {
+            @Override public D2InstallSteps steps() { return steps; }
+            @Override public String stepName(D2InstallSteps.Step step) { return getString(STEP_TEXT[step.ordinal()]); }
+            @Override public CharSequence status() {
+                TextView v = progressView != null && progressView.getText().length() > 0 ? progressView : statusView;
+                return v != null ? v.getText() : null;
+            }
+        }), shown -> {});
+        installDeck.start();
         if (D2TouchOverlay.isGameRunning()) {
 
             statusView.setTextColor(D2Style.RED);
@@ -513,10 +523,19 @@ public class D2InstallActivity extends D2Activity {
         scroll.setBackgroundColor(D2Style.BACKGROUND);
         scroll.addView(page, new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         setContentView(scroll);
+        // Thor D2: the CD keys never show up in screenshots or screen recordings.
+        getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE);
+    }
+
+    @Override
+    public void setContentView(android.view.View view) {
+        getWindow().clearFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE);
+        super.setContentView(view);
     }
 
 
     private boolean restoring;
+    private D2DeckScreen installDeck;
 
 
     private boolean roomForKeys() {
@@ -1382,6 +1401,8 @@ public class D2InstallActivity extends D2Activity {
             | android.text.InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS | android.text.InputType.TYPE_TEXT_FLAG_CAP_CHARACTERS);
         field.setImportantForAutofill(android.view.View.IMPORTANT_FOR_AUTOFILL_NO_EXCLUDE_DESCENDANTS);
         field.setSaveEnabled(false);
+        // Thor D2: masked like a password; the keyboard stays the plain one without suggestions.
+        field.setTransformationMethod(android.text.method.PasswordTransformationMethod.getInstance());
         return field;
     }
 
@@ -1739,6 +1760,7 @@ public class D2InstallActivity extends D2Activity {
 
     @Override
     protected void onDestroy() {
+        if (installDeck != null) installDeck.stop();
         stopped = true;
         D2Telemetry.phase(this, D2TelemetryEvents.PHASE_APP);
         dismissNoStart();

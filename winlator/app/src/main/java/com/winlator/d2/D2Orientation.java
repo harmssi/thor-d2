@@ -12,7 +12,8 @@ import android.content.pm.ActivityInfo;
 
 public final class D2Orientation {
 
-    public static final int INSTALL = ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT;
+    // Thor D2: the AYN Thor is a landscape handheld; its pages stay in landscape.
+    public static final int INSTALL = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE;
 
     public static final int INSTALLER = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE;
 

@@ -1022,6 +1022,20 @@ public final class D2Hud {
     }
 
 
+    /** Thor D2: the life or mana orb with its glass, top left at (x, y), k screen pixels per game pixel. */
+    public void drawOrb(Canvas canvas, boolean life, float x, float y, float k, int percent) {
+        orb(canvas, life ? lifeOrb : manaOrb, 0, 0, percent, k, x, y);
+        image(canvas, life ? lifeGlass : manaGlass, life ? 0 : -2, life ? 0 : -4, k, x, y);
+    }
+
+    public int orbWidth() {
+        return lifeOrb.getWidth();
+    }
+
+    public int orbHeight() {
+        return lifeOrb.getHeight();
+    }
+
     private void orb(Canvas canvas, Bitmap b, int gx, int gy, int percent, float scale, float x0, float y0) {
         int p = Math.max(0, Math.min(100, percent));
         if (p == 0) return;

@@ -23,17 +23,32 @@ final class D2DeckScreen implements DisplayManager.DisplayListener {
         void deckShown(boolean shown);
     }
 
+    /** What the second screen shows: a view that redraws itself while started. */
+    interface Page {
+        android.view.View create(Context context);
+        void start(android.view.View view);
+        void stop(android.view.View view);
+    }
+
+    static Page deck(D2Deck.Host host) {
+        return new Page() {
+            @Override public android.view.View create(Context context) { return new D2Deck(context, host); }
+            @Override public void start(android.view.View view) { ((D2Deck) view).start(); }
+            @Override public void stop(android.view.View view) { ((D2Deck) view).stop(); }
+        };
+    }
+
     private final Activity activity;
-    private final D2Deck.Host host;
+    private final Page page;
     private final Listener listener;
     private final DisplayManager displays;
     private final Handler handler = new Handler(Looper.getMainLooper());
     private Presentation presentation;
-    private D2Deck deck;
+    private android.view.View deck;
 
-    D2DeckScreen(Activity activity, D2Deck.Host host, Listener listener) {
+    D2DeckScreen(Activity activity, Page page, Listener listener) {
         this.activity = activity;
-        this.host = host;
+        this.page = page;
         this.listener = listener;
         this.displays = (DisplayManager) activity.getSystemService(Context.DISPLAY_SERVICE);
     }
@@ -60,11 +75,11 @@ final class D2DeckScreen implements DisplayManager.DisplayListener {
     }
 
     void pause() {
-        if (deck != null) deck.stop();
+        if (deck != null) page.stop(deck);
     }
 
     void resume() {
-        if (deck != null) deck.start();
+        if (deck != null) page.start(deck);
     }
 
     boolean shown() {
@@ -72,7 +87,7 @@ final class D2DeckScreen implements DisplayManager.DisplayListener {
     }
 
     private void detach() {
-        if (deck != null) deck.stop();
+        if (deck != null) page.stop(deck);
         if (presentation != null) presentation.dismiss();
         boolean was = presentation != null;
         presentation = null;
@@ -89,7 +104,7 @@ final class D2DeckScreen implements DisplayManager.DisplayListener {
         // Presentation contexts do not inherit the app's language; use the activity's.
         Configuration cfg = new Configuration(p.getContext().getResources().getConfiguration());
         cfg.setLocales(activity.getResources().getConfiguration().getLocales());
-        D2Deck d = new D2Deck(p.getContext().createConfigurationContext(cfg), host);
+        android.view.View d = page.create(p.getContext().createConfigurationContext(cfg));
         p.setContentView(d);
         p.getWindow().addFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE | WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
             | WindowManager.LayoutParams.FLAG_FULLSCREEN);
@@ -102,7 +117,7 @@ final class D2DeckScreen implements DisplayManager.DisplayListener {
         }
         presentation = p;
         deck = d;
-        d.start();
+        page.start(d);
         Log.i(TAG, "deck on display " + target.getDisplayId());
         listener.deckShown(true);
     }

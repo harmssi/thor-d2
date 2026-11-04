@@ -4,43 +4,51 @@ import android.annotation.SuppressLint;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
-import android.graphics.Color;
+import android.graphics.LinearGradient;
 import android.graphics.Paint;
+import android.graphics.RadialGradient;
 import android.graphics.RectF;
+import android.graphics.Shader;
 import android.graphics.Typeface;
 import android.os.SystemClock;
 import android.view.MotionEvent;
 import android.view.View;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
 /**
- * Thor D2: the deck on the lower screen (1240x1080 on the AYN Thor). Plain dark panels drawn on a canvas, live from
- * the mod: values, skills, effects, area and quests, inventory, belt, stash, cube and mercenary, and a sort button.
- * Skill icons come at runtime from the player's own game files (D2Hud) when they are loaded; nothing from the game is
- * part of the app.
+ * Thor D2: the deck on the lower screen (1240x1080 on the AYN Thor), live from the mod: values, life and mana orbs,
+ * skills, effects, area and quests, inventory, belt, stash, cube and mercenary, and a sort button.
+ * It looks like the game when the player's game files are there: the frames, orbs, skill icons, fonts and item
+ * pictures are read at runtime from the player's own MPQs (D2Hud, D2DeckArt). Without them it draws its own dark
+ * look. No graphics of the game are part of the app.
  */
 @SuppressLint("ViewConstructor")
 public final class D2Deck extends View {
     public interface Host {
         D2ModLink link();
         D2Hud hud();
+        File gameDir();
     }
 
     private static final float W = 1240, H = 1080;
-    private static final int BG = 0xFF0B0B0D, PANEL = 0xFF17161A, PANEL_EDGE = 0xFF2A2830, TEXT = 0xFFE6E1D6,
-        DIM = 0xFF8C877D, ACCENT = 0xFFC8A86A, LIFE = 0xFFB0302A, MANA = 0xFF2F55C0, XP = 0xFFB89A3A, MERC = 0xFF4E9A45;
+    // Colours of the game: gold headings, white/blue/yellow/gold/green/orange/grey items, resistance colours.
+    private static final int GOLD = 0xFFC7B377, TEXT = 0xFFE8E2D2, DIM = 0xFF8F8775, RED = 0xFFD04040,
+        PANEL_FILL = 0xE0100C09, EDGE = 0xFF5A4A30, XP = 0xFFB89A3A, MERC = 0xFF3FA040;
     private static final int TAB_INV = 0, TAB_STASH = 1, TAB_CUBE = 2, TAB_MERC = 3, TAB_QUESTS = 4;
 
     private final Host host;
     private final boolean german;
     private final Paint fill = new Paint(Paint.ANTI_ALIAS_FLAG), stroke = new Paint(Paint.ANTI_ALIAS_FLAG),
-        text = new Paint(Paint.ANTI_ALIAS_FLAG), icon = new Paint(Paint.FILTER_BITMAP_FLAG);
+        text = new Paint(Paint.ANTI_ALIAS_FLAG), icon = new Paint(Paint.FILTER_BITMAP_FLAG), bg = new Paint();
     private final RectF r = new RectF();
     private final D2Effects effects = new D2Effects();
     private D2Hud effectsHud;
+    private volatile D2DeckArt art;
+    private File artDir;
     private int tab = TAB_INV;
     private long selectedId = -1;
     private String note;
@@ -70,8 +78,8 @@ public final class D2Deck extends View {
         this.host = host;
         this.german = context.getResources().getConfiguration().getLocales().get(0).getLanguage().equals("de");
         stroke.setStyle(Paint.Style.STROKE);
-        text.setTypeface(Typeface.create("sans-serif-condensed", Typeface.NORMAL));
-        setBackgroundColor(BG);
+        text.setTypeface(Typeface.create(Typeface.SERIF, Typeface.NORMAL));
+        bg.setShader(new LinearGradient(0, 0, 0, H, 0xFF15110D, 0xFF070605, Shader.TileMode.CLAMP));
     }
 
     public void start() {
@@ -89,6 +97,19 @@ public final class D2Deck extends View {
         return german ? de : en;
     }
 
+    private void loadArt() {
+        File dir = host.gameDir();
+        if (dir == null || dir.equals(artDir)) return;
+        artDir = dir;
+        new Thread(() -> {
+            D2DeckArt a = D2DeckArt.load(dir);
+            if (a != null) {
+                art = a;
+                postInvalidate();
+            }
+        }, "deck-art").start();
+    }
+
     // ---- drawing ------------------------------------------------------------------------------------------------
 
     @Override
@@ -97,150 +118,188 @@ public final class D2Deck extends View {
         float k = Math.min(getWidth() / W, getHeight() / H);
         c.save();
         c.scale(k, k);
+        c.drawRect(0, 0, W, H, bg);
+        loadArt();
         D2ModLink link = host.link();
         D2ModState s = link != null ? link.state() : null;
         D2DeckData.Stats st = link != null ? link.deck.stats(3000) : null;
+        D2Hud hud = host.hud();
         if (s == null || st == null) {
-            drawWaiting(c, link);
+            drawWaiting(c, link, hud);
             c.restore();
             return;
         }
-        D2Hud hud = host.hud();
-        drawHeader(c, link, s, st);
-        drawBars(c, link, s, st);
-        drawValues(c, st);
-        drawSkills(c, s, hud);
-        drawEffects(c, link, hud);
-        drawTabs(c);
+        drawHeader(c, hud, link, s, st);
+        drawOrbs(c, hud, link, st);
+        drawValues(c, hud, st);
+        drawSkills(c, hud, s);
+        drawEffects(c, hud, link);
+        drawTabs(c, hud);
         RectF content = new RectF(616, 182, 1224, 900);
+        int[] grids = link.grids();
         switch (tab) {
-            case TAB_INV: drawInventory(c, link, content); break;
-            case TAB_STASH: drawGridPage(c, link.deck.items(D2DeckData.OWNER_HERO), D2DeckData.PAGE_STASH, 6, 8, content,
+            case TAB_INV: drawInventory(c, hud, link, content, grids); break;
+            case TAB_STASH: drawGridPage(c, hud, link.deck.items(D2DeckData.OWNER_HERO), D2DeckData.PAGE_STASH,
+                dim(grids, D2Points.GRIDS_STASH_W, 6), dim(grids, D2Points.GRIDS_STASH_H, 8), content,
                 t("Stash is empty or not loaded yet", "Truhe leer oder noch nicht geladen")); break;
-            case TAB_CUBE: drawGridPage(c, link.deck.items(D2DeckData.OWNER_HERO), D2DeckData.PAGE_CUBE, 3, 4, content,
+            case TAB_CUBE: drawGridPage(c, hud, link.deck.items(D2DeckData.OWNER_HERO), D2DeckData.PAGE_CUBE,
+                dim(grids, D2Points.GRIDS_CUBE_W, 3), dim(grids, D2Points.GRIDS_CUBE_H, 4), content,
                 t("Cube is empty", "Würfel ist leer")); break;
-            case TAB_MERC: drawMerc(c, link, st, content); break;
-            default: drawQuests(c, link, s, content);
+            case TAB_MERC: drawMerc(c, hud, link, st, content); break;
+            default: drawQuests(c, hud, link, s, content);
         }
-        drawActions(c, link, s, st);
+        drawActions(c, hud, link, st);
         c.restore();
     }
 
-    private void drawWaiting(Canvas c, D2ModLink link) {
-        panel(c, 16, 16, 1224, 1064);
-        text.setColor(ACCENT);
-        text.setTextSize(54);
-        text.setTextAlign(Paint.Align.CENTER);
-        c.drawText("Thor D2", W / 2, 470, text);
-        text.setColor(DIM);
-        text.setTextSize(30);
-        c.drawText(link == null || !link.isConnected() ? t("Waiting for the game …", "Warte auf das Spiel …")
-            : t("Waiting for a character in the game …", "Warte auf einen Charakter im Spiel …"), W / 2, 530, text);
-        text.setTextAlign(Paint.Align.LEFT);
+    private static int dim(int[] grids, int index, int fallback) {
+        return grids != null && grids[index] > 0 ? grids[index] : fallback;
     }
 
-    private void drawHeader(Canvas c, D2ModLink link, D2ModState s, D2DeckData.Stats st) {
-        panel(c, 16, 16, 1224, 96);
+    private void drawWaiting(Canvas c, D2ModLink link, D2Hud hud) {
+        panel(c, hud, 16, 16, 1224, 1064);
+        title(c, "Thor D2", W / 2, 500, 56, GOLD, Paint.Align.CENTER);
+        body(c, link == null || !link.isConnected() ? t("Waiting for the game …", "Warte auf das Spiel …")
+            : t("Waiting for a character in the game …", "Warte auf einen Charakter im Spiel …"), W / 2, 560, 28, DIM, Paint.Align.CENTER);
+    }
+
+    private void drawHeader(Canvas c, D2Hud hud, D2ModLink link, D2ModState s, D2DeckData.Stats st) {
+        panel(c, hud, 16, 16, 1224, 100);
         String name = link.characterName();
         String[] classes = german
             ? new String[]{"Amazone", "Zauberin", "Totenbeschwörer", "Paladin", "Barbar", "Druide", "Assassine"}
             : new String[]{"Amazon", "Sorceress", "Necromancer", "Paladin", "Barbarian", "Druid", "Assassin"};
         String cls = s.characterClass >= 0 && s.characterClass < classes.length ? classes[s.characterClass] : "";
         String[] diffs = german ? new String[]{"Normal", "Albtraum", "Hölle"} : new String[]{"Normal", "Nightmare", "Hell"};
-        label(c, (name != null ? name : "?"), 36, 62, 38, TEXT, true);
-        label(c, cls + " · " + t("Level ", "Stufe ") + st.get(12)
-            + (st.difficulty < 3 ? " · " + diffs[st.difficulty] : ""), 36, 88, 22, DIM, false);
+        title(c, name != null ? name : "?", 40, 62, 40, GOLD, Paint.Align.LEFT);
+        body(c, cls + " · " + t("Level ", "Stufe ") + st.get(12) + (st.difficulty < 3 ? " · " + diffs[st.difficulty] : ""),
+            40, 90, 22, DIM, Paint.Align.LEFT);
         D2LevelNames names = D2LevelNames.current();
         String area = names != null ? names.name(s.levelNo) : null;
         int act = actOf(s.levelNo);
-        text.setTextAlign(Paint.Align.RIGHT);
-        label(c, area != null ? area : t("Area ", "Gebiet ") + s.levelNo, 1204, 62, 32, ACCENT, true);
-        label(c, (act > 0 ? t("Act ", "Akt ") + act : "") + (s.inTown ? t(" · town", " · Stadt") : "")
-            + " · " + t("Gold ", "Gold ") + fmt(st.get(14)) + t(" · stash ", " · Truhe ") + fmt(st.get(15)), 1204, 88, 22, DIM, false);
-        text.setTextAlign(Paint.Align.LEFT);
+        title(c, area != null ? area : t("Area ", "Gebiet ") + s.levelNo, 1200, 62, 34, GOLD, Paint.Align.RIGHT);
+        body(c, (act > 0 ? t("Act ", "Akt ") + act : "") + (s.inTown ? t(" · town", " · Stadt") : "")
+            + " · Gold " + fmt(st.get(14)) + t(" · stash ", " · Truhe ") + fmt(st.get(15)), 1200, 90, 22, DIM, Paint.Align.RIGHT);
     }
 
-    private void drawBars(Canvas c, D2ModLink link, D2ModState s, D2DeckData.Stats st) {
-        panel(c, 16, 108, 600, 400);
-        bar(c, 36, 128, t("Life", "Leben"), st.get(6) >> 8, st.get(7) >> 8, LIFE);
-        bar(c, 36, 196, "Mana", st.get(8) >> 8, st.get(9) >> 8, MANA);
+    private void drawOrbs(Canvas c, D2Hud hud, D2ModLink link, D2DeckData.Stats st) {
+        panel(c, hud, 16, 108, 600, 400);
+        long life = st.get(6) >> 8, maxLife = st.get(7) >> 8, mana = st.get(8) >> 8, maxMana = st.get(9) >> 8;
+        int lifeP = maxLife > 0 ? (int) (life * 100 / maxLife) : 0, manaP = maxMana > 0 ? (int) (mana * 100 / maxMana) : 0;
+        float size = 150;
+        orb(c, hud, true, 40, 124, size, lifeP);
+        orb(c, hud, false, 576 - size, 124, size, manaP);
+        body(c, life + " / " + maxLife, 40 + size / 2, 304, 24, TEXT, Paint.Align.CENTER);
+        body(c, mana + " / " + maxMana, 576 - size / 2, 304, 24, TEXT, Paint.Align.CENTER);
+        body(c, t("Life", "Leben"), 40 + size / 2, 330, 20, RED, Paint.Align.CENTER);
+        body(c, "Mana", 576 - size / 2, 330, 20, 0xFF6080E0, Paint.Align.CENTER);
+        // Middle column: experience and mercenary.
+        float mx = 210, mw = 196;
+        body(c, t("Experience", "Erfahrung"), mx + mw / 2, 160, 20, DIM, Paint.Align.CENTER);
         long[] xp = link.experience();
+        float share = 0;
+        String xpText = fmt(st.get(13));
         if (xp != null && xp[2] > xp[1]) {
-            long have = xp[0] - xp[1], need = xp[2] - xp[1];
-            bar(c, 36, 264, t("Experience", "Erfahrung"), have, need, XP);
+            share = (xp[0] - xp[1]) / (float) (xp[2] - xp[1]);
+            xpText = Math.round(share * 100) + " %";
         }
-        else bar(c, 36, 264, t("Experience", "Erfahrung"), st.get(13), 0, XP);
-        if (st.merc) bar(c, 36, 332, t("Mercenary", "Söldner") + " (" + t("level ", "Stufe ") + st.mercLevel + ")",
-            st.mercLife >> 8, st.mercMaxLife >> 8, MERC);
-        else label(c, t("No mercenary nearby", "Kein Söldner in der Nähe"), 36, 372, 22, DIM, false);
+        bar(c, mx, 172, mw, share, XP);
+        body(c, xpText, mx + mw / 2, 222, 22, TEXT, Paint.Align.CENTER);
+        if (st.merc) {
+            body(c, t("Mercenary ", "Söldner ") + st.mercLevel, mx + mw / 2, 264, 20, DIM, Paint.Align.CENTER);
+            bar(c, mx, 276, mw, st.mercMaxLife > 0 ? st.mercLife / (float) st.mercMaxLife : 0, MERC);
+            body(c, (st.mercLife >> 8) + " / " + (st.mercMaxLife >> 8), mx + mw / 2, 326, 20, TEXT, Paint.Align.CENTER);
+        }
+        else body(c, t("no mercenary", "kein Söldner"), mx + mw / 2, 290, 20, DIM, Paint.Align.CENTER);
+        if (st.get(4) > 0 || st.get(5) > 0)
+            body(c, (st.get(4) > 0 ? t("stat points ", "Attributpunkte ") + st.get(4) : "")
+                + (st.get(4) > 0 && st.get(5) > 0 ? " · " : "") + (st.get(5) > 0 ? t("skill points ", "Fertigkeitspunkte ") + st.get(5) : ""),
+                308, 380, 22, GOLD, Paint.Align.CENTER);
     }
 
-    private void bar(Canvas c, float x, float y, String what, long value, long max, int color) {
-        label(c, what, x, y + 22, 22, DIM, false);
-        text.setTextAlign(Paint.Align.RIGHT);
-        label(c, max > 0 ? fmt(value) + " / " + fmt(max) : fmt(value), 580, y + 22, 22, TEXT, false);
-        text.setTextAlign(Paint.Align.LEFT);
-        r.set(x, y + 32, 580, y + 56);
-        fill.setColor(0xFF0E0D10);
-        c.drawRoundRect(r, 6, 6, fill);
-        if (max > 0) {
-            r.right = x + (580 - x) * Math.max(0, Math.min(1, value / (float) max));
-            fill.setColor(color);
-            c.drawRoundRect(r, 6, 6, fill);
+    private void orb(Canvas c, D2Hud hud, boolean life, float x, float y, float size, int percent) {
+        if (hud != null) {
+            float k = size / hud.orbWidth();
+            hud.drawOrb(c, life, x, y, k, percent);
+            return;
         }
+        // Own look: a glass ball filled from below.
+        float cx = x + size / 2, cy = y + size / 2, rad = size / 2 - 4;
+        fill.setShader(null);
+        fill.setColor(0xFF0A0808);
+        c.drawCircle(cx, cy, rad, fill);
+        c.save();
+        c.clipRect(x, y + size - 4 - (size - 8) * Math.max(0, Math.min(100, percent)) / 100f, x + size, y + size);
+        fill.setShader(new RadialGradient(cx - rad / 3, cy - rad / 3, rad * 1.3f, life ? 0xFFE04030 : 0xFF4060F0,
+            life ? 0xFF500808 : 0xFF080C50, Shader.TileMode.CLAMP));
+        c.drawCircle(cx, cy, rad, fill);
+        fill.setShader(null);
+        c.restore();
+        stroke.setColor(EDGE);
+        stroke.setStrokeWidth(4);
+        c.drawCircle(cx, cy, rad, stroke);
     }
 
-    private void drawValues(Canvas c, D2DeckData.Stats st) {
-        panel(c, 16, 412, 600, 610);
-        int[][] res = {{39, 40, 0xFFD8603A}, {43, 44, 0xFF6FA8DC}, {41, 42, 0xFFE8D45A}, {45, 46, 0xFF6DBF5A}};
-        String[] resNames = german ? new String[]{"Feuer", "Kälte", "Blitz", "Gift"} : new String[]{"Fire", "Cold", "Light.", "Poison"};
+    private void bar(Canvas c, float x, float y, float w, float share, int color) {
+        r.set(x, y, x + w, y + 18);
+        fill.setColor(0xFF0A0807);
+        c.drawRect(r, fill);
+        r.right = x + w * Math.max(0, Math.min(1, share));
+        fill.setColor(color);
+        c.drawRect(r, fill);
+        r.right = x + w;
+        stroke.setColor(EDGE);
+        stroke.setStrokeWidth(2);
+        c.drawRect(r, stroke);
+    }
+
+    private void drawValues(Canvas c, D2Hud hud, D2DeckData.Stats st) {
+        panel(c, hud, 16, 412, 600, 610);
+        int[][] res = {{39, 40, 0xFFE05030}, {43, 44, 0xFF5090F0}, {41, 42, 0xFFF0E050}, {45, 46, 0xFF40C040}};
+        String[] resNames = german ? new String[]{"Feuer", "Kälte", "Blitz", "Gift"} : new String[]{"Fire", "Cold", "Lightning", "Poison"};
         for (int i = 0; i < 4; i++) {
             float x = 36 + i * 140;
-            r.set(x, 428, x + 128, 506);
-            fill.setColor(0xFF0E0D10);
-            c.drawRoundRect(r, 8, 8, fill);
+            r.set(x, 430, x + 128, 508);
+            fill.setColor(0xFF0A0807);
+            c.drawRect(r, fill);
             stroke.setColor(res[i][2]);
             stroke.setStrokeWidth(2);
-            c.drawRoundRect(r, 8, 8, stroke);
+            c.drawRect(r, stroke);
             int v = st.resistance(res[i][0], res[i][1]);
-            text.setTextAlign(Paint.Align.CENTER);
-            label(c, resNames[i], x + 64, 454, 20, res[i][2], false);
-            label(c, v + "%", x + 64, 494, 34, v < 0 ? 0xFFE05050 : TEXT, true);
-            text.setTextAlign(Paint.Align.LEFT);
+            body(c, resNames[i], x + 64, 456, 20, res[i][2], Paint.Align.CENTER);
+            body(c, v + "%", x + 64, 498, 30, v < 0 ? RED : TEXT, Paint.Align.CENTER);
         }
         String[] attr = german ? new String[]{"Stärke", "Geschick", "Vitalität", "Energie"} : new String[]{"Strength", "Dexterity", "Vitality", "Energy"};
         long[] av = {st.get(0), st.get(2), st.get(3), st.get(1)};
         for (int i = 0; i < 4; i++) {
             float x = 36 + i * 140;
-            label(c, attr[i], x, 540, 20, DIM, false);
-            label(c, String.valueOf(av[i]), x, 570, 28, TEXT, true);
+            body(c, attr[i], x, 540, 20, DIM, Paint.Align.LEFT);
+            body(c, String.valueOf(av[i]), x, 574, 28, TEXT, Paint.Align.LEFT);
         }
-        String extra = t("Defense ", "Verteidigung ") + st.get(31) + " · MF " + st.get(80) + "%";
-        if (st.get(4) > 0) extra += t(" · stat points ", " · Attributpunkte ") + st.get(4);
-        if (st.get(5) > 0) extra += t(" · skill points ", " · Fertigkeitspunkte ") + st.get(5);
-        label(c, extra, 36, 600, 20, st.get(4) > 0 || st.get(5) > 0 ? ACCENT : DIM, false);
+        body(c, t("Defense ", "Verteidigung ") + st.get(31) + " · " + t("Magic find ", "Magiefund ") + st.get(80) + "%",
+            36, 598, 20, DIM, Paint.Align.LEFT);
     }
 
-    private void drawSkills(Canvas c, D2ModState s, D2Hud hud) {
-        panel(c, 16, 622, 600, 820);
+    private void drawSkills(Canvas c, D2Hud hud, D2ModState s) {
+        panel(c, hud, 16, 622, 600, 820);
         skill(c, hud, s.leftSkill, t("Left", "Links"), 36, 640);
         skill(c, hud, s.rightSkill, t("Right", "Rechts"), 316, 640);
         for (int i = 0; i < 8; i++) {
             int id = s.hotkeySkill[i];
-            float x = 36 + (i % 4) * 140, y = 742 + (i / 4) * 34;
-            label(c, "F" + (i + 1) + " " + (id >= 0 ? ellipsize(skillName(hud, id), 110, 18) : "–"), x, y, 18,
-                id >= 0 ? TEXT : DIM, false);
+            float x = 36 + (i % 4) * 140, y = 750 + (i / 4) * 34;
+            body(c, "F" + (i + 1) + " " + (id >= 0 ? ellipsize(skillName(hud, id), 104, 18) : "–"), x, y, 18,
+                id >= 0 ? TEXT : DIM, Paint.Align.LEFT);
         }
     }
 
     private void skill(Canvas c, D2Hud hud, int id, String side, float x, float y) {
         Bitmap b = hud != null && id >= 0 ? hud.skillIcon(id) : null;
         r.set(x, y, x + 64, y + 64);
-        fill.setColor(0xFF0E0D10);
-        c.drawRoundRect(r, 6, 6, fill);
+        fill.setColor(0xFF0A0807);
+        c.drawRect(r, fill);
         if (b != null) c.drawBitmap(b, null, r, icon);
-        label(c, side, x + 76, y + 24, 18, DIM, false);
-        label(c, id >= 0 ? ellipsize(skillName(hud, id), 190, 24) : "–", x + 76, y + 54, 24, TEXT, true);
+        body(c, side, x + 76, y + 24, 18, DIM, Paint.Align.LEFT);
+        body(c, id >= 0 ? ellipsize(skillName(hud, id), 190, 24) : "–", x + 76, y + 56, 24, GOLD, Paint.Align.LEFT);
     }
 
     private String skillName(D2Hud hud, int id) {
@@ -248,19 +307,19 @@ public final class D2Deck extends View {
         return n != null ? n : "#" + id;
     }
 
-    private void drawEffects(Canvas c, D2ModLink link, D2Hud hud) {
-        panel(c, 16, 832, 600, 1064);
-        label(c, t("Effects and auras", "Effekte und Auren"), 36, 862, 22, ACCENT, true);
+    private void drawEffects(Canvas c, D2Hud hud, D2ModLink link) {
+        panel(c, hud, 16, 832, 600, 1064);
+        body(c, t("Effects and auras", "Effekte und Auren"), 36, 870, 24, GOLD, Paint.Align.LEFT);
         if (hud != effectsHud) {
             effects.setTexts(getContext(), hud);
             effectsHud = hud;
         }
         D2Effects.Effect[] list = link.effects();
         if (list.length == 0) {
-            label(c, t("none", "keine"), 36, 898, 20, DIM, false);
+            body(c, t("none", "keine"), 36, 906, 20, DIM, Paint.Align.LEFT);
             return;
         }
-        float y = 898;
+        float y = 906;
         for (D2Effects.Effect e : list) {
             if (y > 1050) break;
             String d;
@@ -270,85 +329,91 @@ public final class D2Deck extends View {
             catch (RuntimeException ex) {
                 d = "#" + e.state;
             }
-            label(c, ellipsize(d, 548, 20), 36, y, 20, TEXT, false);
+            body(c, ellipsize(d, 548, 20), 36, y, 20, TEXT, Paint.Align.LEFT);
             y += 30;
         }
     }
 
-    private void drawTabs(Canvas c) {
+    private void drawTabs(Canvas c, D2Hud hud) {
         String[] names = german ? new String[]{"Inventar", "Truhe", "Würfel", "Söldner", "Quests"}
             : new String[]{"Inventory", "Stash", "Cube", "Mercenary", "Quests"};
         float w = (1224 - 616) / (float) names.length;
         for (int i = 0; i < names.length; i++) {
             final int which = i;
-            RectF a = new RectF(616 + i * w + (i > 0 ? 4 : 0), 108, 616 + (i + 1) * w, 170);
-            fill.setColor(i == tab ? 0xFF2C2622 : PANEL);
-            c.drawRoundRect(a, 10, 10, fill);
-            stroke.setColor(i == tab ? ACCENT : PANEL_EDGE);
-            stroke.setStrokeWidth(2);
-            c.drawRoundRect(a, 10, 10, stroke);
-            text.setTextAlign(Paint.Align.CENTER);
-            label(c, names[i], a.centerX(), a.centerY() + 9, 24, i == tab ? ACCENT : TEXT, i == tab);
-            text.setTextAlign(Paint.Align.LEFT);
+            RectF a = new RectF(616 + i * w + (i > 0 ? 4 : 0), 108, 616 + (i + 1) * w, 172);
+            panel(c, hud, a.left, a.top, a.right, a.bottom);
+            if (i == tab) {
+                fill.setColor(0x40C7B377);
+                c.drawRect(a.left + 6, a.top + 6, a.right - 6, a.bottom - 6, fill);
+            }
+            body(c, names[i], a.centerX(), a.centerY() + 8, 20, i == tab ? GOLD : DIM, Paint.Align.CENTER);
             hits.add(new Hit(a, () -> { tab = which; selectedId = -1; }));
         }
     }
 
-    private void drawInventory(Canvas c, D2ModLink link, RectF area) {
-        panel(c, area.left, area.top, area.right, area.bottom);
+    private void drawInventory(Canvas c, D2Hud hud, D2ModLink link, RectF area, int[] grids) {
+        panel(c, hud, area.left, area.top, area.right, area.bottom);
         List<D2DeckData.Item> items = link.deck.items(D2DeckData.OWNER_HERO);
-        float top = area.top + 16;
-        float bottom = grid(c, items, D2DeckData.PAGE_INV, 10, 4, area.left + 16, top, area.width() - 32, 58);
+        float bottom = grid(c, items, D2DeckData.PAGE_INV, dim(grids, D2Points.GRIDS_INV_W, 10), dim(grids, D2Points.GRIDS_INV_H, 4),
+            area.left + 20, area.top + 20, area.width() - 40, 58, 420);
         int rows = 1;
         for (D2DeckData.Item it : items) if (it.page == D2DeckData.PAGE_BELT) rows = Math.max(rows, it.x / 4 + 1);
-        label(c, t("Belt", "Gürtel"), area.left + 16, bottom + 34, 22, ACCENT, true);
-        float beltBottom = beltGrid(c, items, rows, area.left + 16, bottom + 46, 52);
-        label(c, t("Equipped", "Angelegt"), area.left + 268, bottom + 34, 22, ACCENT, true);
+        body(c, t("Belt", "Gürtel"), area.left + 20, bottom + 40, 22, GOLD, Paint.Align.LEFT);
+        float beltBottom = beltGrid(c, items, rows, area.left + 20, bottom + 52, 56);
+        body(c, t("Equipped", "Angelegt"), area.left + 268, bottom + 40, 22, GOLD, Paint.Align.LEFT);
         String[] slots = german
-            ? new String[]{"", "Kopf", "Amulett", "Rüstung", "Rechte Hand", "Linke Hand", "Ring rechts", "Ring links", "Gürtel", "Stiefel", "Handschuhe", "Waffe 2 rechts", "Waffe 2 links"}
-            : new String[]{"", "Head", "Amulet", "Armor", "Right hand", "Left hand", "Right ring", "Left ring", "Belt", "Boots", "Gloves", "Swap right", "Swap left"};
-        float y = bottom + 66;
+            ? new String[]{"", "Kopf", "Amulett", "Rüstung", "Rechts", "Links", "Ring r.", "Ring l.", "Gürtel", "Stiefel", "Handsch.", "Waffe 2 r.", "Waffe 2 l."}
+            : new String[]{"", "Head", "Amulet", "Armor", "Right", "Left", "Ring r.", "Ring l.", "Belt", "Boots", "Gloves", "Swap r.", "Swap l."};
+        float y = bottom + 74;
         for (D2DeckData.Item it : items) {
-            if (it.page != D2DeckData.PAGE_BODY || y > area.bottom - 60) continue;
+            if (it.page != D2DeckData.PAGE_BODY || y > area.bottom - 50) continue;
             String slot = it.x < slots.length ? slots[it.x] : "?";
             RectF a = new RectF(area.left + 268, y - 22, area.right - 16, y + 6);
             if (it.id == selectedId) {
-                fill.setColor(0xFF2C2622);
+                fill.setColor(0x40C7B377);
                 c.drawRect(a, fill);
             }
-            label(c, ellipsize(slot + ": " + it.oneLine(), area.right - area.left - 300, 19), area.left + 268, y, 19, qualityColor(it), false);
+            body(c, slot, area.left + 268, y, 19, DIM, Paint.Align.LEFT);
+            body(c, ellipsize(it.oneLine(), area.right - area.left - 400, 19), area.left + 368, y, 19, qualityColor(it), Paint.Align.LEFT);
             hits.add(new Hit(a, () -> selectedId = it.id));
             y += 28;
         }
-        drawSelected(c, items, area, Math.max(beltBottom, y));
+        drawSelected(c, items, area);
     }
 
-    private void drawGridPage(Canvas c, List<D2DeckData.Item> items, int page, int minW, int minH, RectF area, String empty) {
-        panel(c, area.left, area.top, area.right, area.bottom);
+    private void drawGridPage(Canvas c, D2Hud hud, List<D2DeckData.Item> items, int page, int gw, int gh, RectF area, String empty) {
+        panel(c, hud, area.left, area.top, area.right, area.bottom);
         boolean any = false;
         for (D2DeckData.Item it : items) any |= it.page == page;
         if (!any) {
-            label(c, empty, area.left + 24, area.top + 50, 24, DIM, false);
+            body(c, empty, area.left + 28, area.top + 56, 24, DIM, Paint.Align.LEFT);
             return;
         }
-        float bottom = grid(c, items, page, minW, minH, area.left + 16, area.top + 16, area.width() - 32, area.height() - 140);
-        drawSelected(c, items, area, bottom);
+        grid(c, items, page, gw, gh, area.left + 20, area.top + 20, area.width() - 40, 80, area.height() - 100);
+        drawSelected(c, items, area);
     }
 
-    private void drawMerc(Canvas c, D2ModLink link, D2DeckData.Stats st, RectF area) {
-        panel(c, area.left, area.top, area.right, area.bottom);
+    private void drawMerc(Canvas c, D2Hud hud, D2ModLink link, D2DeckData.Stats st, RectF area) {
+        panel(c, hud, area.left, area.top, area.right, area.bottom);
         if (!st.merc) {
-            label(c, t("No mercenary nearby (or none hired)", "Kein Söldner in der Nähe (oder keiner angeheuert)"), area.left + 24, area.top + 50, 24, DIM, false);
+            body(c, t("No mercenary nearby (or none hired)", "Kein Söldner in der Nähe (oder keiner angeheuert)"),
+                area.left + 28, area.top + 56, 24, DIM, Paint.Align.LEFT);
             return;
         }
-        label(c, t("Mercenary, level ", "Söldner, Stufe ") + st.mercLevel + " · " + t("life ", "Leben ") + (st.mercLife >> 8) + " / " + (st.mercMaxLife >> 8),
-            area.left + 24, area.top + 50, 26, TEXT, true);
-        float y = area.top + 100;
+        body(c, t("Mercenary, level ", "Söldner, Stufe ") + st.mercLevel, area.left + 28, area.top + 56, 28, GOLD, Paint.Align.LEFT);
+        body(c, t("Life ", "Leben ") + (st.mercLife >> 8) + " / " + (st.mercMaxLife >> 8), area.left + 28, area.top + 92, 22, TEXT, Paint.Align.LEFT);
+        float y = area.top + 140;
         List<D2DeckData.Item> items = link.deck.items(D2DeckData.OWNER_MERC);
-        if (items.isEmpty()) label(c, t("No equipment seen", "Keine Ausrüstung gesehen"), area.left + 24, y, 22, DIM, false);
+        if (items.isEmpty()) body(c, t("No equipment seen", "Keine Ausrüstung gesehen"), area.left + 28, y, 22, DIM, Paint.Align.LEFT);
         for (D2DeckData.Item it : items) {
-            label(c, ellipsize(it.oneLine(), area.width() - 48, 22), area.left + 24, y, 22, qualityColor(it), false);
-            y += 34;
+            Bitmap b = picture(it);
+            if (b != null) {
+                float h = 48, w = h * b.getWidth() / b.getHeight();
+                r.set(area.left + 28, y - 36, area.left + 28 + w, y + 12);
+                c.drawBitmap(b, null, r, icon);
+            }
+            body(c, ellipsize(it.oneLine(), area.width() - 140, 22), area.left + 100, y, 22, qualityColor(it), Paint.Align.LEFT);
+            y += 58;
         }
     }
 
@@ -362,65 +427,56 @@ public final class D2Deck extends View {
     // Word of the first quest of each act in the quest flags (same layout as the quest block of a .d2s file).
     private static final int[] QUEST_FIRST_WORD = {1, 9, 17, 25, 35};
 
-    private void drawQuests(Canvas c, D2ModLink link, D2ModState s, RectF area) {
-        panel(c, area.left, area.top, area.right, area.bottom);
+    private void drawQuests(Canvas c, D2Hud hud, D2ModLink link, D2ModState s, RectF area) {
+        panel(c, hud, area.left, area.top, area.right, area.bottom);
         int[] words = link.questWorte();
         int act = Math.max(1, actOf(s.levelNo));
-        float y = area.top + 46;
+        float y = area.top + 52;
         String hint = null;
         for (int a = 0; a < 5; a++) {
             boolean current = a + 1 == act;
-            label(c, t("Act ", "Akt ") + (a + 1), area.left + 24, y, current ? 26 : 22, current ? ACCENT : DIM, true);
-            y += current ? 8 : 0;
+            body(c, t("Act ", "Akt ") + (a + 1), area.left + 28, y, current ? 28 : 22, current ? GOLD : DIM, Paint.Align.LEFT);
+            int done = 0;
             for (int q = 0; q < QUESTS_EN[a].length; q++) {
                 int w = QUEST_FIRST_WORD[a] + q;
                 int v = words != null && w < words.length ? words[w] : -1;
-                String state = v < 0 ? "?" : (v & 1) != 0 ? "✓" : (v & 2) != 0 ? t("reward", "Belohnung") : (v & 4) != 0 ? t("started", "begonnen") : "·";
+                boolean finished = v >= 0 && (v & 1) != 0;
+                if (finished) done++;
+                String state = v < 0 ? "?" : finished ? t("done", "erledigt") : (v & 2) != 0 ? t("reward", "Belohnung") : (v & 4) != 0 ? t("started", "begonnen") : "·";
                 if (current) {
-                    y += 30;
-                    label(c, QUESTS_EN[a][q], area.left + 48, y, 22, (v & 1) != 0 && v >= 0 ? DIM : TEXT, false);
-                    text.setTextAlign(Paint.Align.RIGHT);
-                    label(c, state, area.right - 24, y, 22, (v & 1) != 0 && v >= 0 ? MERC : ACCENT, false);
-                    text.setTextAlign(Paint.Align.LEFT);
+                    y += 34;
+                    body(c, QUESTS_EN[a][q], area.left + 52, y, 22, finished ? DIM : TEXT, Paint.Align.LEFT);
+                    body(c, state, area.right - 28, y, 22, finished ? MERC : GOLD, Paint.Align.RIGHT);
                 }
-                if (hint == null && v >= 0 && (v & 1) == 0 && a + 1 >= act) hint = QUESTS_EN[a][q] + (state.equals("·") ? "" : " (" + state + ")");
+                if (hint == null && v >= 0 && !finished && a + 1 >= act) hint = QUESTS_EN[a][q] + (state.equals("·") ? "" : " (" + state + ")");
             }
-            if (!current) {
-                int done = 0;
-                for (int q = 0; q < QUESTS_EN[a].length; q++) {
-                    int w = QUEST_FIRST_WORD[a] + q;
-                    if (words != null && w < words.length && (words[w] & 1) != 0) done++;
-                }
-                text.setTextAlign(Paint.Align.RIGHT);
-                label(c, words != null ? done + " / " + QUESTS_EN[a].length : "?", area.right - 24, y, 22, DIM, false);
-                text.setTextAlign(Paint.Align.LEFT);
-            }
-            y += 40;
+            if (!current) body(c, words != null ? done + " / " + QUESTS_EN[a].length : "?", area.right - 28, y, 22, DIM, Paint.Align.RIGHT);
+            y += 44;
         }
-        label(c, words == null ? t("Quest state not known yet", "Queststand noch unbekannt")
+        body(c, words == null ? t("Quest state not known yet", "Queststand noch unbekannt")
             : hint != null ? t("Next: ", "Als Nächstes: ") + hint : t("All quests of this act are done", "Alle Quests dieses Akts erledigt"),
-            area.left + 24, area.bottom - 24, 24, ACCENT, true);
+            area.left + 28, area.bottom - 28, 22, GOLD, Paint.Align.LEFT);
     }
 
-    private void drawActions(Canvas c, D2ModLink link, D2ModState s, D2DeckData.Stats st) {
-        panel(c, 616, 912, 1224, 1064);
+    private void drawActions(Canvas c, D2Hud hud, D2ModLink link, D2DeckData.Stats st) {
+        panel(c, hud, 616, 912, 1224, 1064);
         boolean single = st.singlePlayer && link.singlePlayer();
         D2Points pts = link.points(3000);
         boolean sorting = pts != null && pts.sortState == D2Points.SORT_RUNNING && SystemClock.uptimeMillis() - sortSentAt < 25000;
-        button(c, new RectF(632, 928, 900, 1000), sorting ? t("Sorting …", "Sortiere …") : t("Sort inventory", "Inventar sortieren"),
+        button(c, hud, new RectF(636, 930, 904, 1002), sorting ? t("Sorting …", "Sortiere …") : t("Sort inventory", "Inventar sortieren"),
             single && !sorting, () -> {
                 sortSentAt = SystemClock.uptimeMillis();
                 link.sortInventory(false);
                 note(t("Sorting: the game moves the items one by one", "Sortieren: Das Spiel legt die Gegenstände einzeln um"));
             });
-        button(c, new RectF(912, 928, 1060, 1000), t("Portal", "Portal"), single, link::portal);
-        button(c, new RectF(1072, 928, 1208, 1000), t("Potion", "Trank"), single, () -> link.drink(D2ModLink.DRINK_HEAL, false));
+        button(c, hud, new RectF(916, 930, 1060, 1002), "Portal", single, link::portal);
+        button(c, hud, new RectF(1072, 930, 1204, 1002), t("Potion", "Trank"), single, () -> link.drink(D2ModLink.DRINK_HEAL, false));
         String status;
         if (!single) status = t("Multiplayer / Battle.net: deck actions are off", "Mehrspieler/Battle.net: Deck-Aktionen gesperrt");
         else if (note != null && SystemClock.uptimeMillis() < noteUntil) status = note;
         else if (pts != null && pts.sortCounter > 0) status = sortText(pts.sortState, pts.sortMoves);
         else status = t("Tap an item for its full name", "Gegenstand antippen zeigt den vollen Namen");
-        label(c, ellipsize(status, 570, 20), 632, 1040, 20, DIM, false);
+        body(c, ellipsize(status, 568, 20), 636, 1040, 20, DIM, Paint.Align.LEFT);
     }
 
     private String sortText(int state, int moves) {
@@ -440,29 +496,25 @@ public final class D2Deck extends View {
         noteUntil = SystemClock.uptimeMillis() + 4000;
     }
 
-    private void button(Canvas c, RectF a, String label, boolean enabled, Runnable action) {
-        fill.setColor(enabled ? 0xFF2C2622 : 0xFF141316);
-        c.drawRoundRect(a, 12, 12, fill);
-        stroke.setColor(enabled ? ACCENT : PANEL_EDGE);
-        stroke.setStrokeWidth(2);
-        c.drawRoundRect(a, 12, 12, stroke);
-        text.setTextAlign(Paint.Align.CENTER);
-        label(c, label, a.centerX(), a.centerY() + 9, 25, enabled ? TEXT : DIM, true);
-        text.setTextAlign(Paint.Align.LEFT);
+    private void button(Canvas c, D2Hud hud, RectF a, String label, boolean enabled, Runnable action) {
+        panel(c, hud, a.left, a.top, a.right, a.bottom);
+        fill.setColor(enabled ? 0x30C7B377 : 0x60000000);
+        c.drawRect(a.left + 6, a.top + 6, a.right - 6, a.bottom - 6, fill);
+        body(c, label, a.centerX(), a.centerY() + 9, 22, enabled ? GOLD : DIM, Paint.Align.CENTER);
         if (enabled) hits.add(new Hit(a, action));
     }
 
     /** Draws the items of one page as a grid; returns the bottom edge. */
-    private float grid(Canvas c, List<D2DeckData.Item> items, int page, int minW, int minH, float x0, float y0, float maxW, float maxCell) {
-        int cols = minW, rows = minH;
+    private float grid(Canvas c, List<D2DeckData.Item> items, int page, int cols, int rows, float x0, float y0, float maxW,
+                       float maxCell, float maxH) {
         for (D2DeckData.Item it : items) {
             if (it.page != page) continue;
             cols = Math.max(cols, it.x + it.w);
             rows = Math.max(rows, it.y + it.h);
         }
-        float cell = Math.min(maxCell, Math.min(maxW / cols, 640f / rows));
-        fill.setColor(0xFF0E0D10);
-        stroke.setColor(0xFF201F24);
+        float cell = Math.min(maxCell, Math.min(maxW / cols, maxH / rows));
+        fill.setColor(0xFF0A0807);
+        stroke.setColor(0xFF2A2318);
         stroke.setStrokeWidth(1);
         for (int y = 0; y < rows; y++) for (int x = 0; x < cols; x++) {
             r.set(x0 + x * cell + 1, y0 + y * cell + 1, x0 + (x + 1) * cell - 1, y0 + (y + 1) * cell - 1);
@@ -471,89 +523,98 @@ public final class D2Deck extends View {
         }
         for (D2DeckData.Item it : items) {
             if (it.page != page) continue;
-            RectF a = new RectF(x0 + it.x * cell + 2, y0 + it.y * cell + 2, x0 + (it.x + it.w) * cell - 2, y0 + (it.y + it.h) * cell - 2);
+            RectF a = new RectF(x0 + it.x * cell + 1, y0 + it.y * cell + 1, x0 + (it.x + it.w) * cell - 1, y0 + (it.y + it.h) * cell - 1);
             tile(c, it, a, cell);
         }
         return y0 + rows * cell;
     }
 
     private float beltGrid(Canvas c, List<D2DeckData.Item> items, int rows, float x0, float y0, float cell) {
-        fill.setColor(0xFF0E0D10);
+        fill.setColor(0xFF0A0807);
+        stroke.setColor(0xFF2A2318);
+        stroke.setStrokeWidth(1);
         for (int y = 0; y < rows; y++) for (int x = 0; x < 4; x++) {
             r.set(x0 + x * cell + 1, y0 + y * cell + 1, x0 + (x + 1) * cell - 1, y0 + (y + 1) * cell - 1);
             c.drawRect(r, fill);
+            c.drawRect(r, stroke);
         }
         for (D2DeckData.Item it : items) {
             if (it.page != D2DeckData.PAGE_BELT) continue;
             int col = it.x % 4, row = it.x / 4;
             // Row 0 is the bottom row of the belt, as in the game.
             float top = y0 + (rows - 1 - row) * cell;
-            tile(c, it, new RectF(x0 + col * cell + 2, top + 2, x0 + (col + 1) * cell - 2, top + cell - 2), cell);
+            tile(c, it, new RectF(x0 + col * cell + 1, top + 1, x0 + (col + 1) * cell - 1, top + cell - 1), cell);
         }
         return y0 + rows * cell;
     }
 
+    private Bitmap picture(D2DeckData.Item it) {
+        D2DeckArt a = art;
+        return a != null ? a.picture(it, this::postInvalidate) : null;
+    }
+
     private void tile(Canvas c, D2DeckData.Item it, RectF a, float cell) {
         int color = qualityColor(it);
-        fill.setColor((color & 0x00FFFFFF) | (it.id == selectedId ? 0x70000000 : 0x30000000));
-        c.drawRoundRect(a, 5, 5, fill);
-        stroke.setColor(color);
-        stroke.setStrokeWidth(it.id == selectedId ? 3 : 1.5f);
-        c.drawRoundRect(a, 5, 5, stroke);
-        float size = Math.max(12, Math.min(17, cell * 0.3f));
-        String name = it.oneLine();
-        if (it.w == 1 && it.h == 1) name = shortName(it);
-        wrap(c, name, a, size, color);
-        if (it.quantity > 1 && it.w * it.h <= 2) {
-            text.setTextAlign(Paint.Align.RIGHT);
-            label(c, String.valueOf(it.quantity), a.right - 4, a.bottom - 4, 14, TEXT, true);
-            text.setTextAlign(Paint.Align.LEFT);
+        // Like the game: a tinted cell behind the item, blue for magic, green for set, red-ish when unidentified.
+        int tint = !it.identified() && it.quality >= D2ModItems.QUALITY_MAGIC ? 0x50A02020 : (color & 0x00FFFFFF) | 0x28000000;
+        fill.setColor(it.id == selectedId ? 0x70C7B377 : tint);
+        c.drawRect(a, fill);
+        Bitmap b = picture(it);
+        if (b != null) {
+            float k = Math.min(a.width() / b.getWidth(), a.height() / b.getHeight());
+            float w = b.getWidth() * k, h = b.getHeight() * k;
+            r.set(a.centerX() - w / 2, a.centerY() - h / 2, a.centerX() + w / 2, a.centerY() + h / 2);
+            c.drawBitmap(b, null, r, icon);
         }
+        else {
+            stroke.setColor(color);
+            stroke.setStrokeWidth(1.5f);
+            c.drawRect(a, stroke);
+            wrap(c, it.w == 1 && it.h == 1 ? longestWord(it.oneLine()) : it.oneLine(), a, Math.max(12, Math.min(17, cell * 0.3f)), color);
+        }
+        if (it.quantity > 1 && it.w * it.h <= 2) body(c, String.valueOf(it.quantity), a.right - 3, a.bottom - 3, 16, TEXT, Paint.Align.RIGHT);
         hits.add(new Hit(a, () -> selectedId = it.id));
     }
 
-    private void drawSelected(Canvas c, List<D2DeckData.Item> items, RectF area, float below) {
+    private void drawSelected(Canvas c, List<D2DeckData.Item> items, RectF area) {
         for (D2DeckData.Item it : items) {
             if (it.id != selectedId) continue;
             String line = it.oneLine() + (it.ethereal() ? t(" · ethereal", " · ätherisch") : "")
                 + (!it.identified() && it.quality >= D2ModItems.QUALITY_MAGIC ? t(" · unidentified", " · nicht identifiziert") : "");
-            label(c, ellipsize(line, area.width() - 32, 22), area.left + 16, Math.min(area.bottom - 16, below + 34), 22, qualityColor(it), true);
+            fill.setColor(0xE0000000);
+            c.drawRect(area.left + 8, area.bottom - 50, area.right - 8, area.bottom - 8, fill);
+            body(c, ellipsize(line, area.width() - 40, 22), area.left + 20, area.bottom - 20, 22, qualityColor(it), Paint.Align.LEFT);
             return;
         }
     }
 
-    /** One- and two-word short names for 1x1 cells: potions, gems, runes, scrolls, charms. */
-    private static String shortName(D2DeckData.Item it) {
-        String n = it.oneLine();
-        String[] words = n.split(" ");
-        if (words.length <= 2) return n;
-        return words[words.length - 2] + " " + words[words.length - 1];
+    private static String longestWord(String n) {
+        String best = n;
+        for (String w : n.split(" ")) if (best == n || w.length() > best.length()) best = w;
+        return best;
     }
 
+    /** Item colours as in the game. */
     private static int qualityColor(D2DeckData.Item it) {
         if (it.runeword()) return 0xFFC7B377;
         switch (it.quality) {
-            case D2ModItems.QUALITY_MAGIC: return 0xFF7878FF;
-            case D2ModItems.QUALITY_SET: return 0xFF2BD02B;
+            case D2ModItems.QUALITY_MAGIC: return 0xFF6969FF;
+            case D2ModItems.QUALITY_SET: return 0xFF00C400;
             case D2ModItems.QUALITY_RARE: return 0xFFFFFF64;
             case D2ModItems.QUALITY_UNIQUE: return 0xFFC7B377;
             case D2ModItems.QUALITY_CRAFTED: return 0xFFFFA800;
-            case D2ModItems.QUALITY_LOW: return 0xFF9A9A9A;
-            default: return it.ethereal() || (it.flags & 2) != 0 ? 0xFFB0B0B0 : 0xFFE0E0E0;
+            default: return it.ethereal() || (it.flags & 2) != 0 ? 0xFF8A8A8A : 0xFFE8E8E8;
         }
     }
 
     private void wrap(Canvas c, String s, RectF a, float size, int color) {
-        text.setTextSize(size);
-        text.setColor(color);
-        text.setFakeBoldText(false);
         float maxW = a.width() - 6;
         int maxLines = Math.max(1, (int) ((a.height() - 4) / (size * 1.1f)));
         List<String> lines = new ArrayList<>();
         StringBuilder line = new StringBuilder();
         for (String word : s.split(" ")) {
             String next = line.length() == 0 ? word : line + " " + word;
-            if (text.measureText(next) <= maxW || line.length() == 0) line = new StringBuilder(next);
+            if (width(next, size, false) <= maxW || line.length() == 0) line = new StringBuilder(next);
             else {
                 lines.add(line.toString());
                 line = new StringBuilder(word);
@@ -561,44 +622,68 @@ public final class D2Deck extends View {
         }
         if (line.length() > 0) lines.add(line.toString());
         int n = Math.min(maxLines, lines.size());
-        float y = a.centerY() - (n - 1) * size * 0.55f + size * 0.35f;
-        text.setTextAlign(Paint.Align.CENTER);
-        for (int i = 0; i < n; i++) {
-            String l = lines.get(i);
-            if (i == n - 1 && n < lines.size()) l = l + "…";
-            c.drawText(ellipsizeRaw(l, maxW), a.centerX(), y + i * size * 1.1f, text);
-        }
-        text.setTextAlign(Paint.Align.LEFT);
+        float y = a.centerY() - (n - 1) * size * 0.55f + size * 0.4f;
+        for (int i = 0; i < n; i++) body(c, ellipsize(lines.get(i), maxW, size), a.centerX(), y + i * size * 1.1f, size, color, Paint.Align.CENTER);
     }
 
-    // ---- helpers ------------------------------------------------------------------------------------------------
+    // ---- frames and text: the game's when its files are there, else our own ---------------------------------------
 
-    private void panel(Canvas c, float l, float t, float rr, float b) {
+    private void panel(Canvas c, D2Hud hud, float l, float t, float rr, float b) {
         r.set(l, t, rr, b);
-        fill.setColor(PANEL);
-        c.drawRoundRect(r, 14, 14, fill);
-        stroke.setColor(PANEL_EDGE);
-        stroke.setStrokeWidth(2);
-        c.drawRoundRect(r, 14, 14, stroke);
+        if (hud != null && hud.hasFrame()) {
+            hud.drawFrame(c, r, 1.5f, PANEL_FILL);
+            return;
+        }
+        fill.setColor(PANEL_FILL);
+        c.drawRect(r, fill);
+        stroke.setColor(EDGE);
+        stroke.setStrokeWidth(3);
+        c.drawRect(r, stroke);
+        stroke.setColor(0xFF2A2116);
+        stroke.setStrokeWidth(1);
+        c.drawRect(l + 5, t + 5, rr - 5, b - 5, stroke);
     }
 
-    private void label(Canvas c, String s, float x, float y, float size, int color, boolean bold) {
+    private void title(Canvas c, String s, float x, float y, float size, int color, Paint.Align align) {
+        D2DeckArt a = art;
+        if (a != null) a.title.draw(c, s.replace('·', '-'), x, y + size * 0.1f, size * 0.85f, brighter(color), align);
+        else androidText(c, s, x, y, size, color, align, true);
+    }
+
+    private void body(Canvas c, String s, float x, float y, float size, int color, Paint.Align align) {
+        D2DeckArt a = art;
+        if (a != null) a.body.draw(c, s.replace('·', '-'), x, y + size * 0.15f, size * 0.78f, brighter(color), align);
+        else androidText(c, s, x, y, size, color, align, false);
+    }
+
+    // The game's glyphs are not white: tinting multiplies, so lift the colour to keep it as bright as meant.
+    private static int brighter(int c) {
+        int r = Math.min(255, ((c >> 16) & 255) * 13 / 10 + 40), g = Math.min(255, ((c >> 8) & 255) * 13 / 10 + 40),
+            b = Math.min(255, (c & 255) * 13 / 10 + 40);
+        return 0xFF000000 | r << 16 | g << 8 | b;
+    }
+
+    private void androidText(Canvas c, String s, float x, float y, float size, int color, Paint.Align align, boolean bold) {
         text.setTextSize(size);
         text.setColor(color);
         text.setFakeBoldText(bold);
+        text.setTextAlign(align);
         c.drawText(s, x, y, text);
         text.setFakeBoldText(false);
+        text.setTextAlign(Paint.Align.LEFT);
+    }
+
+    private float width(String s, float size, boolean title) {
+        D2DeckArt a = art;
+        if (a != null) return (title ? a.title : a.body).width(s, size * (title ? 0.85f : 0.78f));
+        text.setTextSize(size);
+        return text.measureText(s);
     }
 
     private String ellipsize(String s, float maxW, float size) {
-        text.setTextSize(size);
-        return ellipsizeRaw(s, maxW);
-    }
-
-    private String ellipsizeRaw(String s, float maxW) {
-        if (text.measureText(s) <= maxW) return s;
+        if (width(s, size, false) <= maxW) return s;
         int n = s.length();
-        while (n > 1 && text.measureText(s, 0, n) + text.measureText("…") > maxW) n--;
+        while (n > 1 && width(s.substring(0, n) + "…", size, false) > maxW) n--;
         return s.substring(0, n) + "…";
     }
 
