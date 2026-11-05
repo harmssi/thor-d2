@@ -19,6 +19,8 @@ If it works for you, a ⭐ on GitHub helps.
 
 Made a video about this? [Open an issue](../../issues/new) and I'll link it here.
 
+**All Thor ports: [toravo.de/en/thor](https://toravo.de/en/thor/)**
+
 1. Download `ThorD2-<version>.apk` from the [Releases](https://github.com/harmssi/thor-d2/releases) and install
    it (Play Protect may warn because the app targets an older Android version: **More details → Install anyway**).
    It installs next to D2Android (package `de.harmssi.thord2`), so both can stay.
