@@ -570,6 +570,23 @@ public final class D2Deck extends View {
                 : t("Taken – tap where it goes", "Aufgenommen – Ziel antippen"), 568, 20), 636, 1040, 20, GOLD, Paint.Align.LEFT);
             return;
         }
+        if (tab == TAB_CUBE) {
+            boolean open = drawState != null && drawState.isOpen(D2ModState.UI_CUBE);
+            button(c, hud, new RectF(636, 930, 904, 1002), t("Open cube", "Würfel öffnen"), single && !open, () -> {
+                link.cubeOpen();
+                note(t("Opening the cube", "Öffne den Würfel"));
+            });
+            button(c, hud, new RectF(916, 930, 1204, 1002), t("Transmute", "Transmutieren"), single && open, () -> {
+                link.cubeTransmute();
+                note(t("Transmuting", "Transmutiere"));
+            });
+            String status = !single ? t("Multiplayer / Battle.net: deck actions are off", "Mehrspieler/Battle.net: Deck-Aktionen gesperrt")
+                : note != null && SystemClock.uptimeMillis() < noteUntil ? note
+                : open ? t("Tap an item, then a cube cell; Transmute", "Gegenstand antippen, dann Würfelfeld; Transmutieren")
+                : t("Open the cube to fill it", "Würfel öffnen, um ihn zu füllen");
+            body(c, ellipsize(status, 568, 20), 636, 1040, 20, DIM, Paint.Align.LEFT);
+            return;
+        }
         boolean sorting = pts != null && pts.sortState == D2Points.SORT_RUNNING && SystemClock.uptimeMillis() - sortSentAt < 25000;
         button(c, hud, new RectF(636, 930, 904, 1002), sorting ? t("Sorting …", "Sortiere …") : t("Sort inventory", "Inventar sortieren"),
             single && !sorting, () -> {
@@ -756,7 +773,7 @@ public final class D2Deck extends View {
         return (beltable(it) && !c.equals("isc")) || c.equals("tbk");
     }
 
-    private static final boolean IDENTIFY_TESTED = false;
+    private static final boolean IDENTIFY_TESTED = true;
 
     private D2DeckData.Item identifier() {
         D2ModLink link = drawLink;
@@ -784,7 +801,7 @@ public final class D2Deck extends View {
                 else link.deckItem(D2ModLink.DI_MOVE, it.id, D2ModLink.DI_TO_BELT, slot, 0, 0);
             }});
         D2DeckData.Item scroll = identifier();
-        // shortcut: identifying (0x27) is not tested on the device yet, so it is off until checked.
+        // Identifying (0x27) with a scroll or tome at hand; checked on the device in 0.1.4.
         if (IDENTIFY_TESTED && !it.identified() && it.quality >= D2ModItems.QUALITY_MAGIC && scroll != null)
             b.add(new Object[]{t("Identify", "Identifiz."), (Runnable) () -> link.deckItem(D2ModLink.DI_IDENTIFY, it.id, 0, 0, 0, scroll.id)});
         if (inv && s != null && s.isOpen(D2ModState.UI_NPCSHOP))

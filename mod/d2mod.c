@@ -3286,7 +3286,7 @@ static void handleCommands(void* player, int stale) {
 
         if (sortBusy() && (cmd == CMD_TAKE || cmd == CMD_BELT || cmd == CMD_EQUIP || cmd == CMD_PORTAL || cmd == CMD_UNIT
             || cmd == CMD_SHOP_POTIONS || cmd == CMD_STASH || cmd == CMD_SELL || cmd == CMD_SELL_LOOT || cmd == CMD_STASH_LOOT
-            || cmd == CMD_CUBE)) {
+            || cmd == CMD_CUBE || cmd == CMD_CUBE_TRANSMUTE)) {
             if (cmd == CMD_STASH) stashBusyDrop();
             continue;
         }
@@ -3304,6 +3304,7 @@ static void handleCommands(void* player, int stale) {
         if (cmd == CMD_DECK_ITEM && player) deckItemCommand(player, buf, n);
         if (cmd == CMD_CUBE && player) cubeCommand(player, buf, n);
         if (cmd == CMD_CUBE_OPEN && player) cubeOpenCommand(player);
+        if (cmd == CMD_CUBE_TRANSMUTE && player) cubeTransmuteCommand(player);
         if (cmd == CMD_LABELS && n >= 9) labelFilterCommand(buf, n);
         if (cmd == CMD_VALUE) valueCommand(buf, n);
         if (cmd == CMD_FRAMES) framesCommand(buf, n);

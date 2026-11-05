@@ -364,6 +364,18 @@ static void deckItemCommand(void* player, const BYTE* buf, int n) {
         return;
     }
     if (op == DI_IDENTIFY) {
+        // As the game does it: use the scroll or tome first (the server then waits for a target), then the target.
+        int sk2, sx2, sy2;
+        void* scroll = diFind(player, other, &sk2, &sx2, &sy2);
+        BYTE u[13] = {0};
+        void* path = RDP(player, U_PATH);
+        u[0] = sk2 == DI_TO_BELT ? 0x26 : 0x20;
+        *(DWORD*) (u + 1) = other;
+        if (sk2 != DI_TO_BELT) {
+            *(WORD*) (u + 5) = path ? (WORD) (RD32(path, PATH_X) >> 16) : 0;
+            *(WORD*) (u + 9) = path ? (WORD) (RD32(path, PATH_Y) >> 16) : 0;
+        }
+        if (scroll) diSend(13, u);
         BYTE p[9] = {0x27};
         *(DWORD*) (p + 1) = id;
         *(DWORD*) (p + 5) = other;

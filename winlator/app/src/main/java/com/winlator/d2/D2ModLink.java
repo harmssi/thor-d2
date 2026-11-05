@@ -1073,6 +1073,13 @@ public final class D2ModLink {
 
 
 
+    public static final int CMD_CUBE_TRANSMUTE = 39;
+
+    public void cubeTransmute() {
+        D2Trace.log("-> cube transmute");
+        send(command(CMD_CUBE_TRANSMUTE, 4).put(new byte[4]));
+    }
+
     public void cubeOpen() {
         D2Trace.log("-> cube open");
         byte[] payload = D2RezeptOeffnen.payload();

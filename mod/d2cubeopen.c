@@ -58,3 +58,23 @@ static void cubeOpenCommand(void* player) {
     fSendPacket(13, 1, packet);
     logLine("cube open: sent for the cube in the %s", where == 0 ? "inventory" : "stash");
 }
+
+#define CMD_CUBE_TRANSMUTE 39
+
+// The cube's own "Transmute" button: the game's button packet 0x4F with button 0x18, only while the cube is open.
+static void cubeTransmuteCommand(void* player) {
+    const char* why = NULL;
+    if (!equipAvailable) why = "the senders are not as expected";
+    else if (!singlePlayerGame()) why = "not a single player game";
+    else if (worldPaused()) why = "paused";
+    else if (!getUiVar(0x1A)) why = "the cube is not open";
+    else if (cubeBusy() || mv.step != MV_NONE || mvLate.id || equip.step != EQ_NONE || sort.active) why = "another job runs";
+    else if (equipCursorId(player)) why = "an item is on the cursor";
+    if (why) {
+        logLine("cube transmute: not sent, %s", why);
+        return;
+    }
+    BYTE packet[7] = {0x4F, 0x18};
+    fSendPacket(7, 1, packet);
+    logLine("cube transmute: sent");
+}

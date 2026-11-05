@@ -1,5 +1,9 @@
 # Thor D2 – changes
 
+## 0.1.4 (2026-11-05)
+- Identify in the deck: tap an unidentified magic item, then *Identify* (with an identify scroll or a tome in the inventory or belt). Uses the game's own identify command, single player only.
+- Horadric Cube in the deck: the *Cube* tab has *Open cube* and *Transmute*; put items in and take them out by touch as before. Uses the game's own cube commands.
+
 ## 0.1.3 (2026-11-04)
 - Items by touch in the deck: tap an item to take it, tap a cell to put it there (inventory, equipment, stash and cube when open in the game, belt slots). Buttons: use, to belt, sell (shop open), drop, cancel. Uses the game's own pick-up and put-down commands, single player only.
 - Button A also talks to NPCs and opens the stash (attack or take, as in D2Android). Taps into the world reach the game while the deck shows.

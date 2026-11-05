@@ -1,5 +1,9 @@
 # Thor D2 – Änderungen
 
+## 0.1.4 (05.11.2026)
+- Identifizieren im Deck: nicht identifizierten magischen Gegenstand antippen, dann *Identifiz.* (mit Identifizierungsrolle oder -buch im Inventar oder Gürtel). Über den Identifizieren-Befehl des Spiels, nur Einzelspieler.
+- Horadrischer Würfel im Deck: Reiter *Würfel* mit *Würfel öffnen* und *Transmutieren*; Gegenstände wie gewohnt per Antippen hinein und heraus. Über die Würfel-Befehle des Spiels.
+
 ## 0.1.3 (04.11.2026)
 - Gegenstände per Touch im Deck: antippen = aufnehmen, Feld antippen = ablegen (Inventar, Ausrüstung, Truhe und Würfel wenn im Spiel offen, Gürtelplätze). Knöpfe: Benutzen, In Gürtel, Verkaufen (Händler offen), Wegwerfen, Abbrechen. Über die Aufnehmen-/Ablegen-Befehle des Spiels, nur Einzelspieler.
 - Taste A spricht auch NPCs an und öffnet die Truhe (Angriff oder Nehmen, wie in D2Android). Antippen der Spielwelt erreicht das Spiel auch mit Deck.

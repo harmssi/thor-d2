@@ -39,9 +39,9 @@ If it works for you, a ⭐ on GitHub helps.
 - **Area and act**, town or not.
 - **Items by touch:** tap an item to take it (it shows gold), tap a cell to put it there: inventory, stash and cube
   (open them in the game), belt slots. While an item is taken the buttons offer use, to belt, sell (a shop open),
-  drop and cancel. Equipment slots work too (tap an equipped item, then an inventory cell, or the other way round).
+  identify (an unidentified item, with a scroll or tome at hand), drop and cancel. Equipment slots work too (tap an equipped item, then an inventory cell, or the other way round).
   The mod sends the game's own pick-up and put-down commands; an item the game refuses goes back where it was.
-  Identifying is not enabled yet.
+- **Horadric Cube:** the *Cube* tab opens the cube and transmutes (the game's own button); fill and empty it by touch.
 - **Skills on keys:** in the *Skills* tab tap a learnt skill, then where it goes: left/right mouse button or F1–F8
   (on the pad X, Y, R3, RB+R3, RB+X, RB+Y, RB+A, RB+B). The current keys show with icon and name. The deck uses the
   game's own skill and hotkey commands (single player); the controller stays with the game.
