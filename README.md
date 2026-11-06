@@ -6,20 +6,26 @@ Thor D2 is a fork of [D2Android](https://github.com/N1v0k/D2Android-Releases) 1.
 handhelds such as the AYN Thor. The game runs on the upper screen as a clean picture without touch buttons; the
 lower screen shows a deck with your character, items, skills and quests, live from the game.
 
-If it works for you, a ⭐ on GitHub helps.
+If it works for you, a ⭐ on GitHub helps – and [subscribing on YouTube](https://www.youtube.com/@toravomusic?sub_confirmation=1) helps me bring more ports to the Thor.
 
 > Unofficial fan project, **not affiliated with, endorsed or supported by Blizzard Entertainment**. Diablo is a
 > trademark or registered trademark of Blizzard Entertainment, Inc. You need your own, purchased copy of Diablo II
 > and Lord of Destruction (CD keys from your Battle.net account, or an existing 1.13d installation). The app
 > contains no game files.
 
-## Quick start
-
 ▶ **[Watch the install guide](https://youtu.be/-4ygDPPjIVM)** · **[Showcase video](https://youtu.be/-4qbnQsiTLY)**
+
+| In the Rogue Encampment (top + bottom screen) | Deck while trading |
+|---|---|
+| ![Barbarian in the Rogue Encampment on the top screen, live deck with life, mana, resistances, skills and inventory on the bottom screen](docs/screenshots/ingame-camp.jpg) | ![Shop window on the top screen, the deck's inventory tab on the bottom screen](docs/screenshots/deck-shop.jpg) |
+
+<sub>Real screenshots from an AYN Thor (deck language follows the game language, German here).</sub>
 
 Made a video about this? [Open an issue](../../issues/new) and I'll link it here.
 
 **All Thor ports: [toravo.de/en/thor](https://toravo.de/en/thor/)**
+
+## Quick start
 
 1. Download `ThorD2-<version>.apk` from the [Releases](https://github.com/harmssi/thor-d2/releases) and install
    it (Play Protect may warn because the app targets an older Android version: **More details → Install anyway**).
