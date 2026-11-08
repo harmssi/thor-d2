@@ -3815,7 +3815,10 @@ public class D2TouchOverlay extends View {
         if (keyboard == null) return;
         int[] f = mod == null ? modLink.menuField() : null;
         if (f == null) {
-            if (keyboardOpened) keyboard.accept(false);
+            if (keyboardOpened) {
+                menuEditor(false);
+                keyboard.accept(false);
+            }
             keyboardOpened = false;
             return;
         }
@@ -3824,6 +3827,7 @@ public class D2TouchOverlay extends View {
         if (hit && SystemClock.uptimeMillis() - menuTapAt < 1000) {
             menuTapAt = 0;
             keyboardOpened = true;
+            menuEditor(true);
             keyboard.accept(true);
         }
 
@@ -8270,7 +8274,14 @@ public class D2TouchOverlay extends View {
     }
 
 
+    private java.util.function.Consumer<Boolean> deckKeyboard;
+
+    public void setDeckKeyboard(java.util.function.Consumer<Boolean> deckKeyboard) {
+        this.deckKeyboard = deckKeyboard;
+    }
+
     private void inputBoxKeyboard(boolean show) {
+        if (deckKeyboard != null) deckKeyboard.accept(show);
         android.view.inputmethod.InputMethodManager imm =
             (android.view.inputmethod.InputMethodManager) getContext().getSystemService(Context.INPUT_METHOD_SERVICE);
         if (imm == null) return;
@@ -8283,14 +8294,51 @@ public class D2TouchOverlay extends View {
         else imm.hideSoftInputFromWindow(getWindowToken(), 0);
     }
 
+    // Thor D2: while a text field of the game's menus (character name) has the keyboard, this view is a real text
+    // editor. Without one the system never rebinds the keyboard, so it stays on the screen it last used (on the
+    // Thor the lower one with "keyboard on the second screen") and nothing typed reaches the game.
+    private boolean menuEditor;
+
+    private void menuEditor(boolean on) {
+        if (on == menuEditor) return;
+        menuEditor = on;
+        android.view.inputmethod.InputMethodManager imm =
+            (android.view.inputmethod.InputMethodManager) getContext().getSystemService(Context.INPUT_METHOD_SERVICE);
+        if (on) {
+            setFocusableInTouchMode(true);
+            requestFocus();
+        }
+        if (imm != null) imm.restartInput(this);
+    }
+
     @Override
     public boolean onCheckIsTextEditor() {
-        return inputBox.open();
+        return inputBox.open() || menuEditor;
     }
 
     @Override
     public android.view.inputmethod.InputConnection onCreateInputConnection(android.view.inputmethod.EditorInfo info) {
-        return inputBox.open() ? inputBox.inputConnection(this, info) : null;
+        if (inputBox.open()) return inputBox.inputConnection(this, info);
+        if (!menuEditor) return null;
+        info.inputType = android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS
+            | android.text.InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD;
+        info.imeOptions = android.view.inputmethod.EditorInfo.IME_ACTION_DONE | android.view.inputmethod.EditorInfo.IME_FLAG_NO_EXTRACT_UI
+            | android.view.inputmethod.EditorInfo.IME_FLAG_NO_FULLSCREEN;
+        // Not a full editor: one committed character becomes the key presses the game reads; longer commits go one by one.
+        return new android.view.inputmethod.BaseInputConnection(this, false) {
+            @Override public boolean commitText(CharSequence text, int newCursorPosition) {
+                for (int i = 0; i < text.length(); i++) super.commitText(text.subSequence(i, i + 1), 1);
+                return true;
+            }
+
+            @Override public boolean deleteSurroundingText(int beforeLength, int afterLength) {
+                for (int i = 0; i < Math.max(1, beforeLength); i++) {
+                    sendKeyEvent(new KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DEL));
+                    sendKeyEvent(new KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_DEL));
+                }
+                return true;
+            }
+        };
     }
 
 

@@ -211,6 +211,7 @@ public class D2GameActivity extends D2Activity {
         overlay = new D2TouchOverlay(this, xServer, winHandler, this::openMenu);
         D2Text.setListener(() -> runOnUiThread(() -> { if (overlay != null) overlay.onLanguageChanged(); }));
         overlay.setKeyboard(this::setKeyboardShown);
+        overlay.setDeckKeyboard(show -> { if (deckScreen != null) deckScreen.keyboard(show); });
 
         overlay.setModExpected(GameShadow.LOADER_EXE.equals(getIntent().getStringExtra(EXTRA_PROGRAM)));
         screen.addOverlay(overlay);
@@ -682,6 +683,7 @@ public class D2GameActivity extends D2Activity {
 
 
     private void setKeyboardShown(boolean show) {
+        if (deckScreen != null) deckScreen.keyboard(show);
         View decor = getWindow().getDecorView();
 
         decor.post(decor::requestApplyInsets);

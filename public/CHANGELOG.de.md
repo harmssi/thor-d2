@@ -1,5 +1,9 @@
 # Thor D2 – Änderungen
 
+## 0.1.5 (08.11.2026)
+- Charaktername: Die Tastatur hängt jetzt richtig am Namensfeld. Vorher konnte sie auf dem Bildschirm bleiben, den sie zuletzt benutzt hatte, und das Getippte kam nirgends an.
+- Tastatur auf dem unteren Bildschirm: Mit der Thor-Option „Tastatur auf dem zweiten Bildschirm“ ging die Tastatur unter dem Deck auf. Das Deck macht jetzt beim Tippen Platz (Charaktername, CD-Key-Felder, Beträge im Spiel) und kommt danach zurück.
+
 ## 0.1.4 (05.11.2026)
 - Identifizieren im Deck: nicht identifizierten magischen Gegenstand antippen, dann *Identifiz.* (mit Identifizierungsrolle oder -buch im Inventar oder Gürtel). Über den Identifizieren-Befehl des Spiels, nur Einzelspieler.
 - Horadrischer Würfel im Deck: Reiter *Würfel* mit *Würfel öffnen* und *Transmutieren*; Gegenstände wie gewohnt per Antippen hinein und heraus. Über die Würfel-Befehle des Spiels.

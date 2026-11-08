@@ -1454,6 +1454,8 @@ public class D2InstallActivity extends D2Activity {
         // Every character shows as a dot, also the last one typed (PasswordTransformationMethod shows it briefly
         // when "show passwords" is on), so a screen recording never sees a key even where FLAG_SECURE is ignored.
         field.setTransformationMethod(new KeyMask());
+        // Thor D2: the deck steps aside while a key field has the keyboard (keyboard on the second screen).
+        field.setOnFocusChangeListener((v, has) -> { if (installDeck != null) installDeck.keyboard(has); });
         return field;
     }
 

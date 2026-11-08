@@ -86,6 +86,20 @@ final class D2DeckScreen implements DisplayManager.DisplayListener {
         return presentation != null;
     }
 
+    // Thor D2: with the AYN option that puts the keyboard on the second screen (system settings ime_fixed and
+    // ime_show_on_second) the keyboard opens on the deck's display, under the deck's window. Step aside while typing.
+    void keyboard(boolean up) {
+        if (presentation == null) return;
+        if (up && imeOnSecondScreen()) presentation.hide();
+        else if (!up && !presentation.isShowing()) presentation.show();
+    }
+
+    private boolean imeOnSecondScreen() {
+        android.content.ContentResolver r = activity.getContentResolver();
+        return android.provider.Settings.System.getInt(r, "ime_fixed", 0) != 0
+            && android.provider.Settings.System.getInt(r, "ime_show_on_second", 0) != 0;
+    }
+
     private void detach() {
         if (deck != null) page.stop(deck);
         if (presentation != null) presentation.dismiss();

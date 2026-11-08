@@ -1,5 +1,9 @@
 # Thor D2 – changes
 
+## 0.1.5 (2026-11-08)
+- Character name: the keyboard is now bound properly to the name field. Before, it could stay on the screen it had last used, so typing reached nothing.
+- Keyboard on the lower screen: with the Thor option that shows the keyboard on the second screen, the keyboard opened under the deck. The deck now steps aside while you type (character name, CD key fields, amounts in the game) and comes back afterwards.
+
 ## 0.1.4 (2026-11-05)
 - Identify in the deck: tap an unidentified magic item, then *Identify* (with an identify scroll or a tome in the inventory or belt). Uses the game's own identify command, single player only.
 - Horadric Cube in the deck: the *Cube* tab has *Open cube* and *Transmute*; put items in and take them out by touch as before. Uses the game's own cube commands.
