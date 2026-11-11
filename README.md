@@ -13,7 +13,7 @@ If it works for you, a ⭐ on GitHub helps – and [subscribing on YouTube](http
 > and Lord of Destruction (CD keys from your Battle.net account, or an existing 1.13d installation). The app
 > contains no game files.
 
-▶ **[Watch the install guide](https://youtu.be/-4ygDPPjIVM)** · **[Showcase video](https://youtu.be/-4qbnQsiTLY)**
+▶ **[Update video: 0.1.1–0.1.5](https://youtu.be/CQwJP7-qFhg)** · **[Watch the install guide](https://youtu.be/-4ygDPPjIVM)** · **[Showcase video](https://youtu.be/-4qbnQsiTLY)**
 
 | In the Rogue Encampment (top + bottom screen) | Deck while trading |
 |---|---|
