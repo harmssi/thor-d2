@@ -47,7 +47,7 @@ Made a video about this? [Open an issue](../../issues/new) and I'll link it here
 - **Skills:** left and right skill (with icons from your own game files), F1–F8.
 - **Effects and auras** with time left.
 - **Area and act**, town or not.
-- **Items by touch:** tap an item to take it (it shows gold), tap a cell to put it there: inventory, stash and cube
+- **Items by touch:** drag an item to its new place, or tap an item to take it (it shows gold), tap a cell to put it there: inventory, stash and cube
   (open them in the game), belt slots. While an item is taken the buttons offer use, to belt, sell (a shop open),
   identify (an unidentified item, with a scroll or tome at hand), drop and cancel. Equipment slots work too (tap an equipped item, then an inventory cell, or the other way round).
   The mod sends the game's own pick-up and put-down commands; an item the game refuses goes back where it was.

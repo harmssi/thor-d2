@@ -1,5 +1,8 @@
 # Thor D2 – changes
 
+## 0.1.6 (2026-11-11)
+- Drag and drop in the deck: drag an item to its new place (inventory, belt, equipped slots, stash and cube when open in the game). The item follows your finger and lands where you let go. Tapping works as before. Uses the same commands of the game, single player only.
+
 ## 0.1.5 (2026-11-08)
 - Character name: the keyboard is now bound properly to the name field. Before, it could stay on the screen it had last used, so typing reached nothing.
 - Keyboard on the lower screen: with the Thor option that shows the keyboard on the second screen, the keyboard opened under the deck. The deck now steps aside while you type (character name, CD key fields, amounts in the game) and comes back afterwards.

@@ -66,10 +66,18 @@ public final class D2Deck extends View {
     private static final class Hit {
         final RectF area;
         final Runnable action;
+        final D2DeckData.Item item;  // set on an item tile: dragging starts here
+        final boolean drop;          // a cell or slot an item can be dropped on
 
         Hit(RectF area, Runnable action) {
+            this(area, action, null, false);
+        }
+
+        Hit(RectF area, Runnable action, D2DeckData.Item item, boolean drop) {
             this.area = area;
             this.action = action;
+            this.item = item;
+            this.drop = drop;
         }
     }
 
@@ -152,6 +160,14 @@ public final class D2Deck extends View {
             default: drawQuests(c, hud, link, s, content);
         }
         drawActions(c, hud, link, st);
+        D2DeckData.Item dragged = dragging ? held() : null;
+        Bitmap ghost = dragged != null ? picture(dragged) : null;
+        if (ghost != null) {  // the item follows the finger
+            r.set(dragX - grabX, dragY - grabY, dragX - grabX + dragW, dragY - grabY + dragH);
+            icon.setAlpha(200);
+            c.drawBitmap(ghost, null, r, icon);
+            icon.setAlpha(255);
+        }
         c.restore();
     }
 
@@ -382,7 +398,7 @@ public final class D2Deck extends View {
             body(c, slots[loc], area.left + 268, y, 18, DIM, Paint.Align.LEFT);
             body(c, it != null ? ellipsize(it.oneLine(), area.right - area.left - 400, 18) : "–", area.left + 368, y, 18,
                 it != null ? qualityColor(it) : DIM, Paint.Align.LEFT);
-            hits.add(new Hit(a, () -> { if (it != null && selectedId < 0) hold(it); else onCell(D2DeckData.PAGE_BODY, slotLoc, 0); }));
+            hits.add(new Hit(a, () -> { if (it != null && selectedId < 0) hold(it); else onCell(D2DeckData.PAGE_BODY, slotLoc, 0); }, null, true));
             y += rowH;
         }
         drawSelected(c, items, area);
@@ -600,7 +616,7 @@ public final class D2Deck extends View {
         if (!single) status = t("Multiplayer / Battle.net: deck actions are off", "Mehrspieler/Battle.net: Deck-Aktionen gesperrt");
         else if (note != null && SystemClock.uptimeMillis() < noteUntil) status = note;
         else if (pts != null && pts.sortCounter > 0) status = sortText(pts.sortState, pts.sortMoves);
-        else status = t("Tap an item to take it, then tap where it goes", "Gegenstand antippen = aufnehmen, Ziel antippen = ablegen");
+        else status = t("Drag an item to its place, or tap it and then tap where it goes", "Gegenstand ziehen oder antippen, dann Ziel antippen");
         body(c, ellipsize(status, 568, 20), 636, 1040, 20, DIM, Paint.Align.LEFT);
     }
 
@@ -646,7 +662,7 @@ public final class D2Deck extends View {
             c.drawRect(r, fill);
             c.drawRect(r, stroke);
             final int cx = x, cy = y;
-            hits.add(new Hit(new RectF(r), () -> onCell(page, cx, cy)));
+            hits.add(new Hit(new RectF(r), () -> onCell(page, cx, cy), null, true));
         }
         for (D2DeckData.Item it : items) {
             if (it.page != page) continue;
@@ -665,7 +681,7 @@ public final class D2Deck extends View {
             c.drawRect(r, fill);
             c.drawRect(r, stroke);
             final int slot = (rows - 1 - y) * 4 + x;
-            hits.add(new Hit(new RectF(r), () -> onCell(D2DeckData.PAGE_BELT, slot, 0)));
+            hits.add(new Hit(new RectF(r), () -> onCell(D2DeckData.PAGE_BELT, slot, 0), null, true));
         }
         for (D2DeckData.Item it : items) {
             if (it.page != D2DeckData.PAGE_BELT) continue;
@@ -705,7 +721,7 @@ public final class D2Deck extends View {
         hits.add(new Hit(a, () -> {
             if (selectedId == it.id) selectedId = -1;
             else hold(it);
-        }));
+        }, it, false));
     }
 
     // ---- items by touch: tap = take, tap a cell = put it there; the action bar offers the right-click jobs ---------
@@ -950,16 +966,74 @@ public final class D2Deck extends View {
     @SuppressLint("ClickableViewAccessibility")
     @Override
     public boolean onTouchEvent(MotionEvent e) {
-        if (e.getActionMasked() != MotionEvent.ACTION_UP) return true;
         float k = Math.min(getWidth() / W, getHeight() / H);
         float x = e.getX() / k, y = e.getY() / k;
-        for (int i = hits.size() - 1; i >= 0; i--) {
-            if (hits.get(i).area.contains(x, y)) {
-                hits.get(i).action.run();
+        switch (e.getActionMasked()) {
+            case MotionEvent.ACTION_DOWN:
+                downX = x;
+                downY = y;
+                dragging = false;
+                return true;
+            case MotionEvent.ACTION_MOVE:
+                if (!dragging && Math.hypot(x - downX, y - downY) > DRAG_SLOP) startDrag();
+                if (dragging) {
+                    dragX = x;
+                    dragY = y;
+                    invalidate();
+                }
+                return true;
+            case MotionEvent.ACTION_CANCEL:
+                if (dragging) selectedId = -1;
+                dragging = false;
                 invalidate();
                 return true;
-            }
+            case MotionEvent.ACTION_UP:
+                break;
+            default:
+                return true;
+        }
+        if (dragging) {
+            dragging = false;
+            // Drop where the item's top left cell lands; outside a grid (belt, equipped slots) where the finger is.
+            Hit to = hitAt(x - grabX + cellW / 2, y - grabY + cellH / 2, true);
+            if (to == null) to = hitAt(x, y, true);
+            if (to != null) to.action.run();  // no target: the item stays taken, a tap can still place it
+            invalidate();
+            return true;
+        }
+        Hit h = hitAt(x, y, false);
+        if (h != null) {
+            h.action.run();
+            invalidate();
         }
         return true;
+    }
+
+    // ---- drag and drop: the same take and put as two taps, in one move ---------------------------------------------
+
+    private static final float DRAG_SLOP = 18;
+    private boolean dragging;
+    private float downX, downY, dragX, dragY, grabX, grabY, dragW, dragH, cellW, cellH;
+
+    private Hit hitAt(float x, float y, boolean dropOnly) {
+        for (int i = hits.size() - 1; i >= 0; i--) {
+            Hit h = hits.get(i);
+            if ((!dropOnly || h.drop) && h.area.contains(x, y)) return h;
+        }
+        return null;
+    }
+
+    private void startDrag() {
+        Hit h = hitAt(downX, downY, false);
+        if (h == null || h.item == null) return;
+        hold(h.item);
+        dragging = true;
+        grabX = downX - h.area.left;
+        grabY = downY - h.area.top;
+        dragW = h.area.width();
+        dragH = h.area.height();
+        boolean inGrid = h.item.page != D2DeckData.PAGE_BELT;  // belt tiles are one cell whatever the item's size
+        cellW = dragW / (inGrid ? h.item.w : 1);
+        cellH = dragH / (inGrid ? h.item.h : 1);
     }
 }

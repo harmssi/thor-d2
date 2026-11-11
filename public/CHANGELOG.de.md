@@ -1,5 +1,8 @@
 # Thor D2 – Änderungen
 
+## 0.1.6 (11.11.2026)
+- Ziehen und Ablegen im Deck: Gegenstand an seinen neuen Platz ziehen (Inventar, Gürtel, angelegte Plätze, Truhe und Würfel, wenn im Spiel offen). Der Gegenstand folgt dem Finger und landet, wo du loslässt. Antippen geht wie bisher. Über dieselben Befehle des Spiels, nur Einzelspieler.
+
 ## 0.1.5 (08.11.2026)
 - Charaktername: Die Tastatur hängt jetzt richtig am Namensfeld. Vorher konnte sie auf dem Bildschirm bleiben, den sie zuletzt benutzt hatte, und das Getippte kam nirgends an.
 - Tastatur auf dem unteren Bildschirm: Mit der Thor-Option „Tastatur auf dem zweiten Bildschirm“ ging die Tastatur unter dem Deck auf. Das Deck macht jetzt beim Tippen Platz (Charaktername, CD-Key-Felder, Beträge im Spiel) und kommt danach zurück.
