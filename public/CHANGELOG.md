@@ -1,5 +1,15 @@
 # Thor D2 – changes
 
+## 0.1.7 (2026-11-12)
+- Swap in the deck: drop an item on a taken place and the two swap. This also works on an equipped slot (ring on ring, weapon on weapon): the worn item goes to where the new one came from, or to a free place in the inventory.
+- Double tap moves an item over: to the open stash or cube and back, a potion into the belt, a worn item into the inventory.
+- Sort the stash: the *Stash* tab has *Sort* (stash open in the game), also for the large 10x10 stash.
+- Gold: *Gold in* and *Gold out* in the *Stash* tab put all gold into the stash or take out as much as the character may carry.
+- Sell junk: with a shop open, *Sell junk* sells all plain weapons and armour (white or grey, no sockets, not ethereal) at once. It asks once before it sells.
+- Points in the deck: with free stat points a *+* shows next to strength, dexterity, vitality and energy. With free skill points the *Skills* tab shows all skills of the class and *Spend a point*.
+- Waypoints in the deck: while the waypoint menu is open in the game, the deck lists the waypoints by act. Tap one to travel.
+- All of it uses the game's own commands, single player only.
+
 ## 0.1.6 (2026-11-11)
 - Drag and drop in the deck: drag an item to its new place (inventory, belt, equipped slots, stash and cube when open in the game). The item follows your finger and lands where you let go. Tapping works as before. Uses the same commands of the game, single player only.
 

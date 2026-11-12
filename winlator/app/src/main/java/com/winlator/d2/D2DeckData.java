@@ -15,6 +15,9 @@ public final class D2DeckData {
     public static final int PAGE_INV = 0, PAGE_BELT = 1, PAGE_BODY = 2, PAGE_STASH = 3, PAGE_CUBE = 4;
     public static final int OWNER_HERO = 0, OWNER_MERC = 1;
     private static final int HEADER = 8;
+    /** The waypoints in the order of the game's table: 9 each for acts 1 to 3, 3 for act 4, 9 for act 5. */
+    public static final int[] WAYPOINT_LEVELS = {1, 3, 4, 5, 6, 27, 29, 32, 35, 40, 48, 42, 57, 43, 44, 52, 74, 46,
+        75, 76, 77, 78, 79, 80, 81, 83, 101, 103, 106, 107, 109, 111, 112, 113, 115, 123, 117, 118, 129};
 
     public static final class Item {
         public final long id;
@@ -38,6 +41,7 @@ public final class D2DeckData {
         public boolean ethereal() { return (flags & 1) != 0; }
         public boolean identified() { return (flags & 4) != 0; }
         public boolean runeword() { return (flags & 8) != 0; }
+        public boolean gear() { return (flags & 16) != 0; }  // a weapon or a piece of armour
         public String oneLine() { return name.isEmpty() ? code.trim() : name.replace('\n', ' ').trim(); }
     }
 
@@ -48,9 +52,10 @@ public final class D2DeckData {
         public final long mercLife, mercMaxLife;
         public final int mercLevel;
         public final long at;
+        public final byte[] waypoints;  // null unless the waypoint menu is open: 39 bits, in the order of WAYPOINT_LEVELS
 
         Stats(int difficulty, Map<Integer, Long> values, boolean merc, long mercLife, long mercMaxLife, int mercLevel,
-              boolean singlePlayer, long at) {
+              boolean singlePlayer, byte[] waypoints, long at) {
             this.difficulty = difficulty;
             this.values = values;
             this.merc = merc;
@@ -58,6 +63,7 @@ public final class D2DeckData {
             this.mercMaxLife = mercMaxLife;
             this.mercLevel = mercLevel;
             this.singlePlayer = singlePlayer;
+            this.waypoints = waypoints;
             this.at = at;
         }
 
@@ -113,7 +119,8 @@ public final class D2DeckData {
         long life = u32(d, at + 1, length), max = u32(d, at + 5, length);
         int level = d[at + 9] & 0xFF;
         boolean single = at + 10 < length && d[at + 10] != 0;
-        stats = new Stats(difficulty, values, merc, life, max, level, single, SystemClock.uptimeMillis());
+        byte[] waypoints = at + 16 < length && d[at + 11] != 0 ? java.util.Arrays.copyOfRange(d, at + 12, at + 17) : null;
+        stats = new Stats(difficulty, values, merc, life, max, level, single, waypoints, SystemClock.uptimeMillis());
     }
 
     private synchronized void parseItems(byte[] d, int length) {

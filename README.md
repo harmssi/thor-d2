@@ -52,6 +52,13 @@ Made a video about this? [Open an issue](../../issues/new) and I'll link it here
   identify (an unidentified item, with a scroll or tome at hand), drop and cancel. Equipment slots work too (tap an equipped item, then an inventory cell, or the other way round).
   The mod sends the game's own pick-up and put-down commands; an item the game refuses goes back where it was.
 - **Horadric Cube:** the *Cube* tab opens the cube and transmutes (the game's own button); fill and empty it by touch.
+- **Swap and quick move:** drop an item on a taken place and the two swap, also on an equipped slot. A double tap moves an
+  item to the open stash or cube and back, a potion into the belt, a worn item into the inventory.
+- **Stash:** the *Stash* tab sorts the stash (also the large 10x10 one) and moves gold in and out. With a shop open,
+  *Sell junk* sells all plain weapons and armour (white or grey, no sockets, not ethereal) after asking once.
+- **Points:** with free stat points a *+* shows next to the four attributes; with free skill points the *Skills* tab shows
+  all skills of the class and *Spend a point*.
+- **Waypoints:** while the waypoint menu is open in the game, the deck lists the waypoints by act; tap one to travel.
 - **Skills on keys:** in the *Skills* tab tap a learnt skill, then where it goes: left/right mouse button or F1–F8
   (on the pad X, Y, R3, RB+R3, RB+X, RB+Y, RB+A, RB+B). The current keys show with icon and name. The deck uses the
   game's own skill and hotkey commands (single player); the controller stays with the game.

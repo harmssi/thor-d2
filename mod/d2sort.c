@@ -33,6 +33,9 @@
 
 enum { SO_NONE, SO_PICK, SO_PLACE, SO_UNDO };
 
+static int sortWhere;  // 0 inventory, 4 stash
+static void moveSendPlace(DWORD id, int x, int y, int place);
+static int moveGrid(void* player, int place, int* w, int* h);
 static BYTE sortCounter, sortState = SORT_NOT_STARTED, sortMoves, sortReportedCounter, sortReportedState;
 static struct {
     int active, step, n, moves;
@@ -95,7 +98,7 @@ static int sortRead(void* player, SortItem* out, int charmsFixed) {
     for (void* item = readable(inventory, 0x10) ? RDP(inventory, INV_FIRST) : NULL; item && guard < 512; guard++) {
         void* data = RDP(item, U_DATA);
         if (!readable(data, 0x70)) return -1;
-        if (RD8(data, IDATA_LOCATION) == 0x00 && RD8(data, IDATA_NODEPAGE) == 1) {
+        if (RD8(data, IDATA_LOCATION) == sortWhere && RD8(data, IDATA_NODEPAGE) == 1) {
             void* path = RDP(item, U_PATH);
             int w, h, tier;
             if (n >= SORT_MAX || !readable(path, 0x14) || !equipSize(item, &w, &h)) return -1;
@@ -182,8 +185,9 @@ static void sortStart(void* player, BYTE place, BYTE options, DWORD now) {
     sort.moves = 0;
     sort.activeMs = 0;
     const char* why = !equipAvailable ? "senders not checked" : !singlePlayerGame() ? "not single player"
-        : worldPaused() ? "paused" : place != 0 ? "not the inventory"
-        : getUiVar(0x0C) || getUiVar(0x17) || getUiVar(0x19) ? "shop, trade or stash open"
+        : worldPaused() ? "paused" : place != 0 && place != 4 ? "not the inventory or the stash"
+        : place == 4 && !getUiVar(0x19) ? "stash closed"
+        : getUiVar(0x0C) || getUiVar(0x17) || (place == 0 && getUiVar(0x19)) ? "shop, trade or stash open"
         : equipCursorId(player) ? "something on the cursor" : equip.step != EQ_NONE ? "Anlegen running"
         : takeSentAt && (long) (now - takeSentAt) < 3000 ? "Nehmen running" : sortMonsterNear(player) ? "monster near"
         : NULL;
@@ -192,8 +196,13 @@ static void sortStart(void* player, BYTE place, BYTE options, DWORD now) {
         return;
     }
 
+    sortWhere = place;
     sortW = invGridW < SORT_MAX_W ? invGridW : SORT_MAX_W;
     sortH = invGridH < SORT_MAX_H ? invGridH : SORT_MAX_H;
+    if (place == 4 && (!moveGrid(player, 4, &sortW, &sortH) || sortW > SORT_MAX_W || sortH > SORT_MAX_H)) {
+        sortDone(SORT_NOT_STARTED, "stash grid unknown or too large");
+        return;
+    }
     int n = sortRead(player, sort.items, options & 1);
     if (n < 0) {
         sortDone(SORT_NOT_STARTED, "inventory not readable");
@@ -267,7 +276,7 @@ static void sortStep(void* player, DWORD now) {
             break;
         }
 
-        if (sort.activeMs > SORT_LIMIT_MS || sort.moves >= 3 * sort.n) {
+        if (sort.activeMs > (sortWhere == 4 ? 4 * SORT_LIMIT_MS : SORT_LIMIT_MS) || sort.moves >= 3 * sort.n) {
             sortDone(SORT_PARTIAL, "limit");
             break;
         }
@@ -294,12 +303,12 @@ static void sortStep(void* player, DWORD now) {
     }
     case SO_PICK:
         if (cursor == s->id) {
-            equipSendToInventory(s->id, sort.toX, sort.toY);
+            moveSendPlace(s->id, sort.toX, sort.toY, sortWhere);
             sort.step = SO_PLACE;
             sort.since = now;
         }
         else if (waited > SORT_STEP_MS) {
-            if (!cursor) {
+            if (!cursor && sortWhere == 0) {
 
                 equipLate.id = s->id;
                 equipLate.fromX = sort.fromX;
@@ -320,7 +329,7 @@ static void sortStep(void* player, DWORD now) {
         else if (waited > SORT_STEP_MS) {
             if (cursor == s->id) {
 
-                equipSendToInventory(s->id, sort.fromX, sort.fromY);
+                moveSendPlace(s->id, sort.fromX, sort.fromY, sortWhere);
                 sort.step = SO_UNDO;
                 sort.since = now;
                 logLine("sort: %lu refused at %u,%u, back to %u,%u", (unsigned long) s->id, sort.toX, sort.toY,

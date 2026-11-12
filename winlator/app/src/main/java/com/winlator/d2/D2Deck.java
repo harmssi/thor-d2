@@ -141,13 +141,17 @@ public final class D2Deck extends View {
         }
         drawHeader(c, hud, link, s, st);
         drawOrbs(c, hud, link, st);
-        drawValues(c, hud, st);
+        drawValues(c, hud, link, st);
         drawSkills(c, hud, s);
         drawEffects(c, hud, link);
         drawTabs(c, hud);
         RectF content = new RectF(616, 182, 1224, 900);
         int[] grids = link.grids();
-        switch (tab) {
+        drawGrids = grids;
+        boolean waypoints = st.waypoints != null && s.isOpen(D2ModState.UI_WAYPOINT);
+        if (!waypoints) wpAct = 0;
+        switch (waypoints ? -1 : tab) {
+            case -1: drawWaypoints(c, hud, link, s, st, content); break;
             case TAB_INV: drawInventory(c, hud, link, content, grids); break;
             case TAB_STASH: drawGridPage(c, hud, link.deck.items(D2DeckData.OWNER_HERO), D2DeckData.PAGE_STASH,
                 dim(grids, D2Points.GRIDS_STASH_W, 6), dim(grids, D2Points.GRIDS_STASH_H, 8), content,
@@ -156,7 +160,7 @@ public final class D2Deck extends View {
                 dim(grids, D2Points.GRIDS_CUBE_W, 3), dim(grids, D2Points.GRIDS_CUBE_H, 4), content,
                 t("Cube is empty", "Würfel ist leer")); break;
             case TAB_MERC: drawMerc(c, hud, link, st, content); break;
-            case TAB_SKILLS: drawSkillKeys(c, hud, link, s, content); break;
+            case TAB_SKILLS: drawSkillKeys(c, hud, link, s, st, content); break;
             default: drawQuests(c, hud, link, s, content);
         }
         drawActions(c, hud, link, st);
@@ -272,7 +276,7 @@ public final class D2Deck extends View {
         c.drawRect(r, stroke);
     }
 
-    private void drawValues(Canvas c, D2Hud hud, D2DeckData.Stats st) {
+    private void drawValues(Canvas c, D2Hud hud, D2ModLink link, D2DeckData.Stats st) {
         panel(c, hud, 16, 412, 600, 610);
         int[][] res = {{39, 40, 0xFFE05030}, {43, 44, 0xFF5090F0}, {41, 42, 0xFFF0E050}, {45, 46, 0xFF40C040}};
         String[] resNames = german ? new String[]{"Feuer", "Kälte", "Blitz", "Gift"} : new String[]{"Fire", "Cold", "Lightning", "Poison"};
@@ -294,6 +298,10 @@ public final class D2Deck extends View {
             float x = 36 + i * 140;
             body(c, attr[i], x, 540, 20, DIM, Paint.Align.LEFT);
             body(c, String.valueOf(av[i]), x, 574, 28, TEXT, Paint.Align.LEFT);
+            D2Points pts = link.points(3000);
+            final int stat = new int[]{0, 2, 3, 1}[i];  // the game's ids: strength, energy, dexterity, vitality
+            if (st.get(4) > 0 && st.singlePlayer && link.singlePlayer() && pts != null && pts.canSend(D2Points.KIND_STAT))
+                button(c, hud, new RectF(x + 76, 540, x + 128, 584), "+", true, () -> link.points(D2Points.KIND_STAT, stat, 0));
         }
         body(c, t("Defense ", "Verteidigung ") + st.get(31) + " · " + t("Magic find ", "Magiefund ") + st.get(80) + "%",
             36, 598, 20, DIM, Paint.Align.LEFT);
@@ -446,32 +454,33 @@ public final class D2Deck extends View {
     // F1..F8 on the Thor pad (D2Gamepad.defaultAction): X, Y, R3, RB+R3, RB+X, RB+Y, RB+A, RB+B.
     private static final String[] KEY_PAD = {"X", "Y", "R3", "RB+R3", "RB+X", "RB+Y", "RB+A", "RB+B"};
 
-    private void drawSkillKeys(Canvas c, D2Hud hud, D2ModLink link, D2ModState s, RectF area) {
+    private void drawSkillKeys(Canvas c, D2Hud hud, D2ModLink link, D2ModState s, D2DeckData.Stats st, RectF area) {
         panel(c, hud, area.left, area.top, area.right, area.bottom);
         D2Points pts = link.points(3000);
+        // With a free skill point all skills of the class show, so a point can go into any of them.
+        boolean spend = st.get(5) > 0 && st.singlePlayer && link.singlePlayer() && pts != null && pts.canSend(D2Points.KIND_SKILL);
         List<Integer> learnt = new ArrayList<>();
         learnt.add(0);
         if (pts != null && pts.baseLevels != null)
-            for (int i = 0; i < pts.baseLevels.length; i++) if (pts.baseLevels[i] > 0) learnt.add(pts.firstSkill + i);
+            for (int i = 0; i < pts.baseLevels.length; i++) if (pts.baseLevels[i] > 0 || spend) learnt.add(pts.firstSkill + i);
         body(c, pickedSkill < 0 ? t("1. Tap a skill", "1. Fertigkeit antippen")
             : t("2. Tap where it goes: ", "2. Ziel antippen: ") + skillName(hud, pickedSkill), area.left + 24, area.top + 40, 22, GOLD, Paint.Align.LEFT);
-        float size = 52, gap = 8, x = area.left + 24, y = area.top + 58;
+        float size = spend ? 44 : 52, gap = 8, x = area.left + 24, y = area.top + 58;
         for (int id : learnt) {
             boolean passive = hud != null && hud.skillPassive(id) == 1;
             RectF a = new RectF(x, y, x + size, y + size);
             fill.setColor(id == pickedSkill ? 0x80C7B377 : 0xFF0A0807);
             c.drawRect(a.left - 4, a.top - 4, a.right + 4, a.bottom + 4, fill);
             Bitmap b = hud != null ? hud.skillIcon(id) : null;
+            int level = level(pts, id);
             if (b != null) {
-                icon.setAlpha(passive ? 90 : 255);
+                icon.setAlpha(passive || (id > 0 && level == 0) ? 90 : 255);
                 c.drawBitmap(b, null, a, icon);
                 icon.setAlpha(255);
             }
             else body(c, ellipsize(skillName(hud, id), size, 14), a.centerX(), a.centerY() + 5, 14, TEXT, Paint.Align.CENTER);
-            int level = id > 0 && pts != null && id - pts.firstSkill >= 0 && id - pts.firstSkill < pts.baseLevels.length
-                ? pts.baseLevels[id - pts.firstSkill] : 0;
             if (level > 0) body(c, String.valueOf(level), a.right - 2, a.bottom - 2, 16, TEXT, Paint.Align.RIGHT);
-            if (!passive) hits.add(new Hit(a, () -> pickedSkill = pickedSkill == id ? -1 : id));
+            if (!passive || spend) hits.add(new Hit(a, () -> pickedSkill = pickedSkill == id ? -1 : id));
             x += size + gap;
             if (x + size > area.right - 20) {
                 x = area.left + 24;
@@ -479,6 +488,14 @@ public final class D2Deck extends View {
             }
         }
         float ty = Math.max(y + size + 36, area.top + 200);
+        if (spend) {
+            final int skill = pickedSkill;
+            button(c, hud, new RectF(area.left + 24, ty - 24, area.right - 24, ty + 32), skill > 0
+                ? t("Spend a point: ", "Punkt vergeben: ") + ellipsize(skillName(hud, skill), 300, 22) + " (" + st.get(5) + ")"
+                : t("Skill points: ", "Fertigkeitspunkte: ") + st.get(5) + t(" – tap a skill", " – Fertigkeit antippen"), skill > 0,
+                () -> link.points(D2Points.KIND_SKILL, skill, 0));
+            ty += 68;
+        }
         body(c, t("Mouse buttons", "Maustasten"), area.left + 24, ty, 20, DIM, Paint.Align.LEFT);
         target(c, hud, new RectF(area.left + 24, ty + 12, area.left + 296, ty + 76), t("Left (A)", "Links (A)"), s.leftSkill,
             () -> link.selectSkill(true, pickedSkill));
@@ -492,6 +509,51 @@ public final class D2Deck extends View {
             float cx = area.left + 24 + (i % 2) * 288, cy = ty + 10 + (i / 2) * 62;
             target(c, hud, new RectF(cx, cy, cx + 272, cy + 56), "F" + (i + 1) + " " + KEY_PAD[i], s.hotkeySkill[i],
                 keys ? () -> link.points(D2Points.KIND_KEY, pickedSkill, key, true) : null);
+        }
+    }
+
+    private static int level(D2Points pts, int id) {
+        return id > 0 && pts != null && pts.baseLevels != null && id - pts.firstSkill >= 0 && id - pts.firstSkill < pts.baseLevels.length
+            ? pts.baseLevels[id - pts.firstSkill] : 0;
+    }
+
+    // ---- waypoints: while the waypoint menu is open in the game, its list shows here; a tap travels -------------
+
+    private int wpAct;  // 0: follow the act the player is in
+
+    private void drawWaypoints(Canvas c, D2Hud hud, D2ModLink link, D2ModState s, D2DeckData.Stats st, RectF area) {
+        panel(c, hud, area.left, area.top, area.right, area.bottom);
+        int act = wpAct > 0 ? wpAct : Math.max(1, actOf(s.levelNo));
+        float w = (area.width() - 40 - 4 * 8) / 5f;
+        for (int a = 1; a <= 5; a++) {
+            final int which = a;
+            float x = area.left + 20 + (a - 1) * (w + 8);
+            button(c, hud, new RectF(x, area.top + 20, x + w, area.top + 84), t("Act ", "Akt ") + a, true, () -> wpAct = which);
+            if (a == act) {
+                fill.setColor(0x40C7B377);
+                c.drawRect(x + 6, area.top + 26, x + w - 6, area.top + 78, fill);
+            }
+        }
+        D2LevelNames names = D2LevelNames.current();
+        boolean single = st.singlePlayer && link.singlePlayer();
+        int first = act == 5 ? 30 : (act - 1) * 9, count = act == 4 ? 3 : 9;
+        float y = area.top + 100;
+        for (int i = first; i < first + count; i++, y += 66) {
+            final int level = D2DeckData.WAYPOINT_LEVELS[i];
+            boolean active = (st.waypoints[i >> 3] >> (i & 7) & 1) != 0, here = level == s.levelNo;
+            String name = names != null ? names.name(level) : null;
+            RectF a = new RectF(area.left + 20, y, area.right - 20, y + 58);
+            fill.setColor(here ? 0x40C7B377 : 0xFF0A0807);
+            c.drawRect(a, fill);
+            stroke.setColor(0xFF2A2318);
+            stroke.setStrokeWidth(1);
+            c.drawRect(a, stroke);
+            body(c, (name != null ? name : t("Area ", "Gebiet ") + level) + (here ? t(" · here", " · hier") : ""), a.left + 20, a.centerY() + 9, 24,
+                here ? GOLD : active ? TEXT : 0xFF5A5448, Paint.Align.LEFT);
+            if (active && !here && single) hits.add(new Hit(a, () -> {
+                link.deckItem(D2ModLink.DI_WAYPOINT, 0, level, 0, 0, 0);
+                note(t("Travelling …", "Reise …"));
+            }));
         }
     }
 
@@ -603,20 +665,62 @@ public final class D2Deck extends View {
             body(c, ellipsize(status, 568, 20), 636, 1040, 20, DIM, Paint.Align.LEFT);
             return;
         }
-        boolean sorting = pts != null && pts.sortState == D2Points.SORT_RUNNING && SystemClock.uptimeMillis() - sortSentAt < 25000;
-        button(c, hud, new RectF(636, 930, 904, 1002), sorting ? t("Sorting …", "Sortiere …") : t("Sort inventory", "Inventar sortieren"),
-            single && !sorting, () -> {
-                sortSentAt = SystemClock.uptimeMillis();
-                link.sortInventory(false);
-                note(t("Sorting: the game moves the items one by one", "Sortieren: Das Spiel legt die Gegenstände einzeln um"));
+        boolean sorting = pts != null && pts.sortState == D2Points.SORT_RUNNING && SystemClock.uptimeMillis() - sortSentAt < 90000;
+        boolean stashOpen = drawState != null && drawState.isOpen(D2ModState.UI_STASH);
+        boolean shopOpen = drawState != null && drawState.isOpen(D2ModState.UI_NPCSHOP);
+        Runnable sortNote = () -> {
+            sortSentAt = SystemClock.uptimeMillis();
+            note(t("Sorting: the game moves the items one by one", "Sortieren: Das Spiel legt die Gegenstände einzeln um"));
+        };
+        if (tab == TAB_STASH) {
+            button(c, hud, new RectF(636, 930, 820, 1002), sorting ? t("Sorting …", "Sortiere …") : t("Sort", "Sortieren"),
+                single && stashOpen && !sorting, () -> {
+                    link.sortStash();
+                    sortNote.run();
+                });
+            button(c, hud, new RectF(832, 930, 1012, 1002), t("Gold in", "Gold rein"), single && stashOpen && st.get(14) > 0, () -> {
+                link.deckItem(D2ModLink.DI_GOLD, 0, 0, 0, 0, 0);
+                note(t("Gold goes into the stash", "Gold geht in die Truhe"));
             });
-        button(c, hud, new RectF(916, 930, 1060, 1002), "Portal", single, link::portal);
-        button(c, hud, new RectF(1072, 930, 1204, 1002), t("Potion", "Trank"), single, () -> link.drink(D2ModLink.DRINK_HEAL, false));
+            button(c, hud, new RectF(1024, 930, 1204, 1002), t("Gold out", "Gold raus"), single && stashOpen && st.get(15) > 0, () -> {
+                link.deckItem(D2ModLink.DI_GOLD, 0, 1, 0, 0, 0);
+                note(t("Gold comes out of the stash", "Gold kommt aus der Truhe"));
+            });
+        }
+        else button(c, hud, new RectF(636, 930, 904, 1002), sorting ? t("Sorting …", "Sortiere …") : t("Sort inventory", "Inventar sortieren"),
+            single && !sorting, () -> {
+                link.sortInventory(false);
+                sortNote.run();
+            });
+        if (tab != TAB_STASH && shopOpen) {
+            // Junk: plain weapons and armour (white or grey), without sockets, not ethereal. Asks once before it sells.
+            final List<Long> junk = new ArrayList<>();
+            for (D2DeckData.Item it : link.deck.items(D2DeckData.OWNER_HERO))
+                if (it.page == D2DeckData.PAGE_INV && it.gear() && it.quality < D2ModItems.QUALITY_MAGIC && (it.flags & 3) == 0) junk.add(it.id);
+            boolean armed = SystemClock.uptimeMillis() < junkArmedUntil;
+            button(c, hud, new RectF(916, 930, 1204, 1002), armed ? t("Really sell ", "Wirklich ") + junk.size() + t("?", " verkaufen?")
+                : t("Sell junk (", "Ramsch verkaufen (") + junk.size() + ")", single && !junk.isEmpty(), () -> {
+                    if (SystemClock.uptimeMillis() >= junkArmedUntil) {
+                        junkArmedUntil = SystemClock.uptimeMillis() + 4000;
+                        note(t("Plain weapons and armour without sockets – tap again to sell", "Einfache Waffen und Rüstungen ohne Sockel – nochmal tippen"));
+                        return;
+                    }
+                    junkArmedUntil = 0;
+                    long[] ids = new long[junk.size()];
+                    for (int i = 0; i < ids.length; i++) ids[i] = junk.get(i);
+                    link.lootJob(true, SystemClock.uptimeMillis() & 0x7FFFFFFF, ids, 0);
+                    note(t("Selling ", "Verkaufe ") + ids.length + t(" items", " Gegenstände"));
+                });
+        }
+        else if (tab != TAB_STASH) {
+            button(c, hud, new RectF(916, 930, 1060, 1002), "Portal", single, link::portal);
+            button(c, hud, new RectF(1072, 930, 1204, 1002), t("Potion", "Trank"), single, () -> link.drink(D2ModLink.DRINK_HEAL, false));
+        }
         String status;
         if (!single) status = t("Multiplayer / Battle.net: deck actions are off", "Mehrspieler/Battle.net: Deck-Aktionen gesperrt");
         else if (note != null && SystemClock.uptimeMillis() < noteUntil) status = note;
         else if (pts != null && pts.sortCounter > 0) status = sortText(pts.sortState, pts.sortMoves);
-        else status = t("Drag an item to its place, or tap it and then tap where it goes", "Gegenstand ziehen oder antippen, dann Ziel antippen");
+        else status = t("Drag an item, or tap it and then its place; double tap moves it over", "Ziehen oder antippen und Ziel antippen; Doppeltipp lagert um");
         body(c, ellipsize(status, 568, 20), 636, 1040, 20, DIM, Paint.Align.LEFT);
     }
 
@@ -719,6 +823,14 @@ public final class D2Deck extends View {
         }
         if (it.quantity > 1 && it.w * it.h <= 2) body(c, String.valueOf(it.quantity), a.right - 3, a.bottom - 3, 16, TEXT, Paint.Align.RIGHT);
         hits.add(new Hit(a, () -> {
+            long now = SystemClock.uptimeMillis();
+            if (it.id == lastTapId && now - lastTapAt < 450) {
+                lastTapId = -1;
+                quickMove(it);
+                return;
+            }
+            lastTapId = it.id;
+            lastTapAt = now;
             if (selectedId == it.id) selectedId = -1;
             else hold(it);
         }, it, false));
@@ -728,6 +840,52 @@ public final class D2Deck extends View {
 
     private D2ModLink drawLink;
     private D2ModState drawState;
+    private int[] drawGrids;
+    private long lastTapId = -1, lastTapAt, junkArmedUntil;
+
+    /** Double tap: over to the open stash or cube and back, a potion into the belt, a worn item into the inventory. */
+    private void quickMove(D2DeckData.Item it) {
+        D2ModLink link = drawLink;
+        D2ModState s = drawState;
+        if (link == null || s == null) return;
+        int to = it.page != D2DeckData.PAGE_INV ? D2DeckData.PAGE_INV : s.isOpen(D2ModState.UI_STASH) ? D2DeckData.PAGE_STASH
+            : s.isOpen(D2ModState.UI_CUBE) ? D2DeckData.PAGE_CUBE : beltable(it) ? D2DeckData.PAGE_BELT : -1;
+        boolean inv = to == D2DeckData.PAGE_INV, stash = to == D2DeckData.PAGE_STASH;
+        int[] spot = to == D2DeckData.PAGE_BELT ? beltSpot(link) : to < 0 ? null : freeSpot(link.deck.items(D2DeckData.OWNER_HERO), to,
+            dim(drawGrids, inv ? D2Points.GRIDS_INV_W : stash ? D2Points.GRIDS_STASH_W : D2Points.GRIDS_CUBE_W, inv ? 10 : stash ? 6 : 3),
+            dim(drawGrids, inv ? D2Points.GRIDS_INV_H : stash ? D2Points.GRIDS_STASH_H : D2Points.GRIDS_CUBE_H, inv ? 4 : stash ? 8 : 4),
+            it.w, it.h);
+        selectedId = -1;
+        if (to < 0) note(t("Double tap moves an item over: open the stash or the cube first", "Doppeltipp lagert um: erst Truhe oder Würfel öffnen"));
+        else if (spot == null) note(t("No room there", "Dort ist kein Platz"));
+        else {
+            selectedId = it.id;
+            onCell(to, spot[0], spot[1]);
+            selectedId = -1;
+        }
+    }
+
+    /** The first free place for a w x h item in a grid, row by row; null when there is none. */
+    static int[] freeSpot(List<D2DeckData.Item> items, int page, int gw, int gh, int w, int h) {
+        boolean[][] used = new boolean[gh][gw];
+        for (D2DeckData.Item o : items) {
+            if (o.page != page) continue;
+            for (int y = o.y; y < Math.min(gh, o.y + o.h); y++) for (int x = o.x; x < Math.min(gw, o.x + o.w); x++) used[y][x] = true;
+        }
+        for (int y = 0; y + h <= gh; y++) for (int x = 0; x + w <= gw; x++) {
+            boolean free = true;
+            for (int j = 0; j < h && free; j++) for (int i = 0; i < w && free; i++) free = !used[y + j][x + i];
+            if (free) return new int[]{x, y};
+        }
+        return null;
+    }
+
+    private static int[] beltSpot(D2ModLink link) {
+        boolean[] used = new boolean[16];
+        for (D2DeckData.Item o : link.deck.items(D2DeckData.OWNER_HERO)) if (o.page == D2DeckData.PAGE_BELT && o.x < 16) used[o.x] = true;
+        for (int i = 0; i < 4; i++) if (!used[i]) return new int[]{i, 0};
+        return null;
+    }
 
     private void hold(D2DeckData.Item it) {
         selectedId = it.id;
@@ -764,17 +922,18 @@ public final class D2Deck extends View {
             note(t("Open the cube in the game first", "Erst im Spiel den Würfel öffnen"));
             return;
         }
-        if (to == D2ModLink.DI_TO_INV || to == D2ModLink.DI_TO_STASH || to == D2ModLink.DI_TO_CUBE) {
-            for (D2DeckData.Item o : link.deck.items(D2DeckData.OWNER_HERO)) {
-                if (o.id == it.id || o.page != page) continue;
-                if (o.x < x + it.w && x < o.x + o.w && o.y < y + it.h && y < o.y + o.h) {
-                    note(t("No room there", "Dort ist kein Platz"));
-                    return;
-                }
-            }
+        int inWay = 0;  // one item in the way: the two swap (the game's own swap); more: no room
+        for (D2DeckData.Item o : link.deck.items(D2DeckData.OWNER_HERO)) {
+            if (o.id == it.id || o.page != page) continue;
+            if (page == D2DeckData.PAGE_BODY ? o.x == x : page != D2DeckData.PAGE_BELT
+                && o.x < x + it.w && x < o.x + o.w && o.y < y + it.h && y < o.y + o.h) inWay++;
+        }
+        if (inWay > 1) {
+            note(t("No room there", "Dort ist kein Platz"));
+            return;
         }
         link.deckItem(D2ModLink.DI_MOVE, it.id, to, x, y, 0);
-        note(t("Moving: ", "Lege um: ") + it.oneLine());
+        note((inWay == 1 ? t("Swapping: ", "Tausche: ") : t("Moving: ", "Lege um: ")) + it.oneLine());
         selectedId = -1;
     }
 

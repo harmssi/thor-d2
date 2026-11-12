@@ -26,6 +26,66 @@ static int deckPage(void* data, int* page) {
     return 1;
 }
 
+static int deckGear(void* item) {
+    int tier, cat = itemCategory(item, itemCode(item), &tier);
+    return cat == CAT_WEAPON || cat == CAT_ARMOR;
+}
+
+// ---- waypoints for the deck: which are active, and the waypoint the player stands at (1.13d client values) -------
+// Checked at runtime instead of by code sites: the menu is open, a waypoint object is near, and the waypoint of the
+// level the player stands in is active in the table. Anything else: the deck gets no waypoints.
+#define RVA_WaypointTable   0x1088FD
+#define DECK_WP_COUNT       39
+static const BYTE DECK_WP_LEVELS[DECK_WP_COUNT] = {1, 3, 4, 5, 6, 27, 29, 32, 35, 40, 48, 42, 57, 43, 44, 52, 74, 46,
+    75, 76, 77, 78, 79, 80, 81, 83, 101, 103, 106, 107, 109, 111, 112, 113, 115, 123, 117, 118, 129};
+
+// The waypoint object next to the player (objects.txt rows of the waypoints of all acts).
+static void* deckNearWaypoint(void* player) {
+    static const WORD rows[] = {119, 145, 156, 157, 237, 238, 288, 323, 324, 398, 402, 429, 494, 496, 511, 539};
+    void* act = RDP(player, U_ACT);
+    void* best = NULL;
+    double bestD = 30;
+    int units = 0;
+    for (void* room = act ? RDP(act, ACT_ROOM1) : NULL; room && units < 4096; room = RDP(room, ROOM1_NEXT)) {
+        for (void* unit = RDP(room, ROOM1_UNITS); unit && units < 4096; unit = RDP(unit, U_LISTNEXT), units++) {
+            if (RD32(unit, U_TYPE) != UNIT_OBJECT) continue;
+            DWORD row = RD32(unit, U_TXTNO);
+            int wp = 0;
+            for (unsigned i = 0; i < sizeof(rows) / sizeof(rows[0]); i++) wp |= rows[i] == row;
+            double d = wp ? unitDistance(player, unit) : 1e9;
+            if (d < bestD) {
+                bestD = d;
+                best = unit;
+            }
+        }
+    }
+    return best;
+}
+
+static int deckWaypoints(void* player, BYTE bits[5], DWORD* wpId) {
+    static int logged;
+    memset(bits, 0, 5);
+    if (!player || !getUiVar(0x14)) { logged = 0; return 0; }
+    const BYTE* table = readable((void*) (client + RVA_WaypointTable), 4) ? *(const BYTE* const*) (client + RVA_WaypointTable) : NULL;
+    void* unit = deckNearWaypoint(player);
+    DWORD id = unit ? RD32(unit, U_ID) : 0;
+    int ok = readable(table, 8) && table[0] == 2 && table[1] == 1 && unit, here = -1;
+    DWORD level = unitLevel(player);
+    for (int i = 0; i < DECK_WP_COUNT; i++) if (DECK_WP_LEVELS[i] == level) here = i;
+    if (ok) memcpy(bits, table + 2, 5);
+    ok = ok && here >= 0 && (bits[here >> 3] >> (here & 7) & 1);
+    if (!logged) {
+        logged = 1;
+        logLine("deck waypoints: table %p (%02X %02X %02X %02X %02X %02X %02X %02X), object %lu %s, level %lu index %d: %s",
+            table, readable(table, 8) ? table[0] : 0, readable(table, 8) ? table[1] : 0, bits[0], bits[1], bits[2], bits[3],
+            bits[4], readable(table, 8) ? table[7] : 0, (unsigned long) id, unit ? "found" : "not found",
+            (unsigned long) level, here, ok ? "ok" : "not as expected");
+    }
+    if (!ok) memset(bits, 0, 5);
+    *wpId = id;
+    return ok;
+}
+
 // One pass over a unit's items: hash only (out == NULL) or write them, starting new packets as they fill.
 static DWORD deckItems(void* unit, int owner, int write, BYTE* chunk) {
     static Packet p;
@@ -80,7 +140,7 @@ static DWORD deckItems(void* unit, int owner, int write, BYTE* chunk) {
             putU8(&p, (BYTE) ((w & 15) << 4 | (h & 15)));
             putU8(&p, (BYTE) RD32(data, IDATA_QUALITY));
             putU8(&p, ((flags & IFLAG_ETHEREAL) ? 1 : 0) | ((flags & IFLAG_SOCKETED) ? 2 : 0)
-                | ((flags & IFLAG_IDENTIFIED) ? 4 : 0) | ((flags & IFLAG_RUNEWORD) ? 8 : 0));
+                | ((flags & IFLAG_IDENTIFIED) ? 4 : 0) | ((flags & IFLAG_RUNEWORD) ? 8 : 0) | (deckGear(item) ? 16 : 0));
             DWORD quantity = fGetUnitStat(item, STAT_QUANTITY, 0);
             putU16(&p, quantity > 0xFFFF ? 0xFFFF : quantity);
             putU8(&p, (BYTE) len);
@@ -116,6 +176,10 @@ static void sendDeck(void* player) {
     putU32(&p, merc ? fGetUnitStat(merc, 7, 0) : 0);
     putU8(&p, merc ? (BYTE) fGetUnitStat(merc, 12, 0) : 0);
     putU8(&p, (BYTE) singlePlayerGame());
+    BYTE wp[5];
+    DWORD wpId;
+    putU8(&p, (BYTE) deckWaypoints(player, wp, &wpId));
+    for (int i = 0; i < 5; i++) putU8(&p, wp[i]);
     sendPacket(&p);
 
     DWORD hash = deckItems(player, 0, 0, NULL) ^ (merc ? deckItems(merc, 1, 0, NULL) * 31 : 0);
@@ -140,6 +204,8 @@ static void sendDeck(void* player) {
 #define DI_IDENTIFY     3
 #define DI_BELT_AUTO    4
 #define DI_SELL         5
+#define DI_GOLD         6
+#define DI_WAYPOINT     7
 #define DI_TO_INV       0
 #define DI_TO_CUBE      3
 #define DI_TO_STASH     4
@@ -152,7 +218,10 @@ static struct {
     int step;
     DWORD id, since;
     int fromKind, fromX, fromY, toKind, toX, toY;  // kinds: 0/3/4 grids, 10 belt, 11 body, 12 ground
+    DWORD swapId;                                  // the item in the way: it is swapped (0x1F, body 0x1D) and goes home
+    int homeKind, homeX, homeY;
 } di;
+static struct { DWORD id; int kind, x, y; } diSwap;
 
 static void* diFind(void* player, DWORD id, int* kind, int* x, int* y) {
     void* inventory = RDP(player, U_INVENTORY);
@@ -183,7 +252,7 @@ static int diGrid(void* player, int kind, int* w, int* h) {
 }
 
 // Whether the cells x..x+iw, y..y+ih of a grid are inside it and free (the item itself does not count).
-static int diCellsFree(void* player, int kind, DWORD self, int x, int y, int iw, int ih) {
+static int diCellsFree(void* player, int kind, DWORD self, DWORD self2, int x, int y, int iw, int ih) {
     int w, h;
     if (!diGrid(player, kind, &w, &h) || x < 0 || y < 0 || x + iw > w || y + ih > h) return 0;
     void* inventory = RDP(player, U_INVENTORY);
@@ -191,7 +260,7 @@ static int diCellsFree(void* player, int kind, DWORD self, int x, int y, int iw,
     for (void* item = readable(inventory, 0x10) ? RDP(inventory, INV_FIRST) : NULL; item && guard < 512; guard++) {
         void* data = RDP(item, U_DATA);
         if (!readable(data, 0x70)) return 0;
-        if (RD8(data, IDATA_LOCATION) == kind && RD8(data, IDATA_NODEPAGE) == 1 && RD32(item, U_ID) != self) {
+        if (RD8(data, IDATA_LOCATION) == kind && RD8(data, IDATA_NODEPAGE) == 1 && RD32(item, U_ID) != self && RD32(item, U_ID) != self2) {
             void* path = RDP(item, U_PATH);
             int ow, oh;
             if (!readable(path, 0x14) || !equipSize(item, &ow, &oh)) return 0;
@@ -201,6 +270,102 @@ static int diCellsFree(void* player, int kind, DWORD self, int x, int y, int iw,
         item = RDP(data, IDATA_NEXTINV);
     }
     return 1;
+}
+
+// Where the item in the way goes: to the place the moved item leaves if it fits there, else to a free place in the
+// inventory. (tx, ty, w, h) is where the moved item lands in grid `to` (to == 11: a body slot, nothing to avoid).
+static const char* diSwapHome(void* player, void* other, DWORD id, int kind, int x, int y, int to, int tx, int ty, int w, int h) {
+    int bw, bh, fx, fy;
+    DWORD oid = RD32(other, U_ID);
+    if (!equipSize(other, &bw, &bh)) return "size of the other item unknown";
+    int grid = kind == 0 || kind == DI_TO_CUBE || kind == DI_TO_STASH;
+    if (grid && diCellsFree(player, kind, id, oid, x, y, bw, bh)
+        && !(kind == to && x < tx + w && tx < x + bw && y < ty + h && ty < y + bh)
+        && !(kind == DI_TO_CUBE && strncmp(itemCode(other), "box", 3) == 0)) {
+        diSwap.kind = kind;
+        diSwap.x = x;
+        diSwap.y = y;
+    }
+    else if (moveFreePlace(player, 0, bw, bh, &fx, &fy) && !(to == 0 && fx < tx + w && tx < fx + bw && fy < ty + h && ty < fy + bh)) {
+        diSwap.kind = 0;
+        diSwap.x = fx;
+        diSwap.y = fy;
+    }
+    else return "no room for the item in the way";
+    diSwap.id = oid;
+    return NULL;
+}
+
+// A grid target that is not free: a swap when exactly one other item is in the way.
+static const char* diSwapPlan(void* player, DWORD id, int kind, int x, int y, int to, int tx, int ty, int w, int h) {
+    int gw, gh, n = 0, guard = 0;
+    if (!diGrid(player, to, &gw, &gh) || tx < 0 || ty < 0 || tx + w > gw || ty + h > gh) return "no room there";
+    void* other = NULL;
+    void* inventory = RDP(player, U_INVENTORY);
+    for (void* item = readable(inventory, 0x10) ? RDP(inventory, INV_FIRST) : NULL; item && guard < 512; guard++) {
+        void* data = RDP(item, U_DATA);
+        if (!readable(data, 0x70)) return "no room there";
+        if (RD8(data, IDATA_LOCATION) == to && RD8(data, IDATA_NODEPAGE) == 1 && RD32(item, U_ID) != id) {
+            void* path = RDP(item, U_PATH);
+            int ow, oh;
+            if (!readable(path, 0x14) || !equipSize(item, &ow, &oh)) return "no room there";
+            int ox = (int) RD32(path, IPATH_X), oy = (int) RD32(path, IPATH_Y);
+            if (ox < tx + w && tx < ox + ow && oy < ty + h && ty < oy + oh) {
+                other = item;
+                n++;
+            }
+        }
+        item = RDP(data, IDATA_NEXTINV);
+    }
+    if (n != 1) return "no room there";
+    return diSwapHome(player, other, id, kind, x, y, to, tx, ty, w, h);
+}
+
+static HWND goldWindow(void);  // d2gold.c
+
+// Gold into the stash or out of it (0x4F, buttons 0x14 and 0x13), and travelling by the open waypoint (0x49).
+static void deckExtraCommand(void* player, int op, int arg) {
+    const char* why = !equipAvailable ? "the senders are not as expected" : !singlePlayerGame() ? "not a single player game"
+        : worldPaused() ? "paused" : NULL;
+    if (!why && op == DI_GOLD) {
+        DWORD level = fGetUnitStat(player, 12, 0), gold = fGetUnitStat(player, 14, 0), bank = fGetUnitStat(player, 15, 0);
+        DWORD bankCap = (level < 31 ? level / 10 + 1 : level / 2 + 1) * 50000, purseCap = level * 10000, amount;
+        if (bankCap > 2500000) bankCap = 2500000;
+        if (arg == 0) amount = bankCap > bank ? (gold < bankCap - bank ? gold : bankCap - bank) : 0;
+        else amount = purseCap > gold ? (bank < purseCap - gold ? bank : purseCap - gold) : 0;
+        if (!getUiVar(0x19)) why = "the stash is not open";
+        else if (!amount) why = "nothing to move";
+        else {
+            BYTE p[7] = {0x4F, (BYTE) (arg == 0 ? 0x14 : 0x13), 0};
+            *(WORD*) (p + 3) = (WORD) (amount >> 16);
+            *(WORD*) (p + 5) = (WORD) amount;
+            fSendPacket(7, 1, p);
+            logLine("deck gold: %s %lu (purse %lu, stash %lu)", arg == 0 ? "deposit" : "withdraw", (unsigned long) amount,
+                (unsigned long) gold, (unsigned long) bank);
+        }
+    }
+    else if (!why) {
+        BYTE bits[5];
+        DWORD wpId = 0;
+        int index = -1;
+        for (int i = 0; i < DECK_WP_COUNT; i++) if (DECK_WP_LEVELS[i] == arg) index = i;
+        if (!deckWaypoints(player, bits, &wpId)) why = "no waypoint open";
+        else if (index < 0 || !(bits[index >> 3] >> (index & 7) & 1)) why = "that waypoint is not active";
+        else if ((DWORD) arg == unitLevel(player)) why = "already there";
+        else {
+            BYTE p[9] = {0x49};
+            *(DWORD*) (p + 1) = wpId;
+            *(DWORD*) (p + 5) = (DWORD) arg;
+            fSendPacket(9, 1, p);
+            HWND window = goldWindow();  // the game closes its menu on its own click only: close it as Escape does
+            if (window) {
+                PostMessageA(window, WM_KEYDOWN, VK_ESCAPE, 0x00010001);
+                PostMessageA(window, WM_KEYUP, VK_ESCAPE, 0xC0010001);
+            }
+            logLine("deck waypoint: to level %d by object %lu", arg, (unsigned long) wpId);
+        }
+    }
+    if (why) logLine("deck extra %d %d: refused, %s", op, arg, why);
 }
 
 static int diBeltable(void* item) {
@@ -258,6 +423,11 @@ static void deckItemCommand(void* player, const BYTE* buf, int n) {
     int kind, x, y, tier;
     void* item = NULL;
     const char* why = NULL;
+    if (op == DI_GOLD || op == DI_WAYPOINT) {
+        deckExtraCommand(player, op, to);
+        return;
+    }
+    memset(&diSwap, 0, sizeof(diSwap));
     if (!equipAvailable) why = "the senders are not as expected";
     else if (!singlePlayerGame()) why = "not a single player game";
     else if (worldPaused()) why = "paused";
@@ -288,12 +458,15 @@ static void deckItemCommand(void* player, const BYTE* buf, int n) {
         }
         else if (to == 0 || to == DI_TO_CUBE || to == DI_TO_STASH) {
             if (!diWindowOpen(to)) why = "the target window is not open";
-            else if (!diCellsFree(player, to, id, tx, ty, w, h)) why = "no room there";
             else if (to == DI_TO_CUBE && strncmp(itemCode(item), "box", 3) == 0) why = "the cube into itself";
+            else if (!diCellsFree(player, to, id, 0, tx, ty, w, h)) why = diSwapPlan(player, id, kind, x, y, to, tx, ty, w, h);
         }
         else if (to == 11) {
             if (tx < 1 || tx > 10) why = "no such body slot";
-            else if (equipFind(player, 0, 1, (BYTE) tx)) why = "the slot is taken (take that item off first)";
+            else {
+                void* worn = equipFind(player, 0, 1, (BYTE) tx);
+                if (worn && worn != item) why = diSwapHome(player, worn, id, kind, x, y, 11, 0, 0, 0, 0);
+            }
         }
         else why = "no such target";
     }
@@ -398,6 +571,10 @@ static void deckItemCommand(void* player, const BYTE* buf, int n) {
     di.toKind = to;
     di.toX = tx;
     di.toY = ty;
+    di.swapId = diSwap.id;
+    di.homeKind = diSwap.kind;
+    di.homeX = diSwap.x;
+    di.homeY = diSwap.y;
     di.since = GetTickCount();
     di.step = DIS_TO_CURSOR;
     diPick(kind, id, x);
@@ -420,7 +597,21 @@ static void deckItemTick(void* player, DWORD now) {
     switch (di.step) {
     case DIS_TO_CURSOR:
         if (cursor == di.id) {
-            diPlace(di.toKind, di.id, di.toX, di.toY);
+            if (di.swapId && di.toKind == 11) {
+                BYTE p[9] = {0x1D};
+                *(DWORD*) (p + 1) = di.id;
+                *(DWORD*) (p + 5) = (DWORD) di.toX;
+                diSend(9, p);
+            }
+            else if (di.swapId) {
+                BYTE p[17] = {0x1F};
+                *(DWORD*) (p + 1) = di.id;
+                *(DWORD*) (p + 5) = di.swapId;
+                *(DWORD*) (p + 9) = (DWORD) di.toX;
+                *(DWORD*) (p + 13) = (DWORD) di.toY;
+                diSend(17, p);
+            }
+            else diPlace(di.toKind, di.id, di.toX, di.toY);
             di.step = DIS_PLACED;
             di.since = now;
         }
@@ -430,6 +621,22 @@ static void deckItemTick(void* player, DWORD now) {
         }
         break;
     case DIS_PLACED:
+        if (cursor != di.id && di.swapId) {
+            // the item that was in the way comes to the cursor: it goes home, as a plain move of its own
+            if (cursor != di.swapId && waited < 500) break;
+            if (cursor == di.swapId) {
+                logLine("deck item %lu: swapped with %lu, that one to %d %d,%d", (unsigned long) di.id, (unsigned long) di.swapId,
+                    di.homeKind, di.homeX, di.homeY);
+                diPlace(di.homeKind, di.swapId, di.homeX, di.homeY);
+                di.id = di.swapId;
+                di.fromKind = di.toKind = di.homeKind;
+                di.fromX = di.toX = di.homeX;
+                di.fromY = di.toY = di.homeY;
+                di.since = now;
+            }
+            di.swapId = 0;
+            break;
+        }
         if (cursor != di.id) {
             logLine("deck item %lu: placed after %ld ms (%s)", (unsigned long) di.id, waited,
                 di.toKind == DI_TO_GROUND || diFind(player, di.id, &kind, &x, &y) ? "ok" : "gone");

@@ -1,5 +1,15 @@
 # Thor D2 – Änderungen
 
+## 0.1.7 (12.11.2026)
+- Tauschen im Deck: Gegenstand auf einen belegten Platz ziehen, dann tauschen beide. Das geht auch auf einem angelegten Platz (Ring auf Ring, Waffe auf Waffe): Der getragene Gegenstand kommt dorthin, wo der neue lag, oder auf einen freien Platz im Inventar.
+- Doppeltipp lagert um: in die offene Truhe oder den offenen Würfel und zurück, einen Trank in den Gürtel, einen angelegten Gegenstand ins Inventar.
+- Truhe sortieren: Im Reiter *Truhe* gibt es *Sortieren* (Truhe im Spiel offen), auch für die große 10x10-Truhe.
+- Gold: *Gold rein* und *Gold raus* im Reiter *Truhe* legen alles Gold in die Truhe oder holen so viel heraus, wie der Charakter tragen darf.
+- Ramsch verkaufen: Bei offenem Händler verkauft *Ramsch verkaufen* alle einfachen Waffen und Rüstungen (weiß oder grau, ohne Sockel, nicht ätherisch) auf einmal. Vorher fragt es einmal nach.
+- Punkte im Deck: Bei freien Attributpunkten steht ein *+* neben Stärke, Geschick, Vitalität und Energie. Bei freien Fertigkeitspunkten zeigt der Reiter *Fertigk.* alle Fertigkeiten der Klasse und *Punkt vergeben*.
+- Wegpunkte im Deck: Solange im Spiel das Wegpunkt-Menü offen ist, listet das Deck die Wegpunkte nach Akt. Antippen reist dorthin.
+- Alles über die Befehle des Spiels selbst, nur Einzelspieler.
+
 ## 0.1.6 (11.11.2026)
 - Ziehen und Ablegen im Deck: Gegenstand an seinen neuen Platz ziehen (Inventar, Gürtel, angelegte Plätze, Truhe und Würfel, wenn im Spiel offen). Der Gegenstand folgt dem Finger und landet, wo du loslässt. Antippen geht wie bisher. Über dieselben Befehle des Spiels, nur Einzelspieler.
 

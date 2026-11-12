@@ -16,8 +16,8 @@
 
 
 #define SORT_MAX_W 10
-#define SORT_MAX_H 8
-#define SORT_MAX 80
+#define SORT_MAX_H 10
+#define SORT_MAX 100
 
 
 static int sortW = 10, sortH = 4;
